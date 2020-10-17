@@ -2179,7 +2179,7 @@ Put those theme file to <code>/usr/share/fcitx5/themes/</code>, and set <code>~/
 <p>If there is multi systems on your device, it is recommended to check whether each system’s entry is well generated.</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /boot/grub/grub.cfg</span><br></pre></td></tr></table></figure>
 <p>Check if it is all right.</p>
-<h3 id="Reboot">Reboot</h3>
+<h3 id="Reboot-and-enjoy-archlinux">Reboot and enjoy archlinux</h3>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">exit</span></span><br><span class="line">umount /mnt/boot</span><br><span class="line">umount /mnt</span><br><span class="line">reboot</span><br></pre></td></tr></table></figure>
 <p>Pull out your U-disk. Login as root, enter your password.</p>
 <p>If you can see the command line, congratulations, you have installed Archlinux successfully! OHHHHHHH!</p>
