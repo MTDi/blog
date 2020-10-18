@@ -1,6 +1,176 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>PHP相关姿势</title>
+    <url>/2020/06/16/PHP%E7%9B%B8%E5%85%B3%E5%A7%BF%E5%8A%BF/</url>
+    <content><![CDATA[<p>整理 CTF 中 PHP 相关的利用姿势，不定期补充。</p>
+<a id="more"></a>
+<h2 id="弱类型相关姿势">弱类型相关姿势</h2>
+<p>弱类型的语言对变量的数据类型没有限制，你可以在任何地时候将变量赋值给任意的其他类型的变量，同时变量也可以转换成任意地其他类型的数据。</p>
+<h3 id="比较操作符">比较操作符</h3>
+<h4 id="类型转换">类型转换</h4>
+<p>弱等的比较中不需左右两边的类型相等，会经过转换变成相同的类型后比较，由此产生安全问题。如：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$a=<span class="keyword">NULL</span>;$b=<span class="keyword">FALSE</span>;  <span class="comment">//$a==$b</span></span><br><span class="line">$a=<span class="string">''</span>;$b=<span class="keyword">NULL</span>;  <span class="comment">//$a==$b</span></span><br></pre></td></tr></table></figure>
+<p>还有，bool类型的true跟任意字符串可以弱类型相等。</p>
+<p>以及类型转换的一些规则，如字符串转数字会从不满足转换规则的位置开始截断只取最前边的数字部分而不会报错等。（ 注：数字到字符串可以用strval()，字符串和数字可以用intval() ）</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="number">0</span> == <span class="string">'0'</span>		<span class="comment">//true</span></span><br><span class="line"><span class="number">0</span> == <span class="string">'abcdefg'</span>	<span class="comment">//true</span></span><br><span class="line"><span class="number">0</span> === <span class="string">'abcdefg'</span>	<span class="comment">//false</span></span><br><span class="line"><span class="number">1</span> == <span class="string">'1abcdef'</span>	<span class="comment">//true</span></span><br><span class="line"><span class="string">"0e123456"</span>==<span class="string">"0e4456789"</span>   <span class="comment">//true</span></span><br></pre></td></tr></table></figure>
+<h4 id="哈希比较">哈希比较</h4>
+<h5 id="md5-弱等的绕过">md5 弱等的绕过</h5>
+<p>md5(‘240610708’) == md5(‘QNKCDZO’) (0exxxxxxx)</p>
+<p>在进行比较运算时，如果遇到了0e\d+这种字符串，就会将这种字符串解析为科学计数法。所以上面例子中2个数的值都是0因而就相等了。如果不满足0e\d+这种模式就不会相等。</p>
+<p>0e\d+ 的字符串整理：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">QNKCDZO</span><br><span class="line"><span class="number">0e830400451993494058024219903391</span></span><br><span class="line">s878926199a</span><br><span class="line"><span class="number">0e545993274517709034328855841020</span></span><br><span class="line">s155964671a</span><br><span class="line"><span class="number">0e342768416822451524974117254469</span></span><br><span class="line">s214587387a</span><br><span class="line"><span class="number">0e848240448830537924465865611904</span></span><br><span class="line">s214587387a</span><br><span class="line"><span class="number">0e848240448830537924465865611904</span></span><br><span class="line">s878926199a</span><br><span class="line"><span class="number">0e545993274517709034328855841020</span></span><br><span class="line">s1091221200a</span><br><span class="line"><span class="number">0e940624217856561557816327384675</span></span><br><span class="line">s1885207154a</span><br><span class="line"><span class="number">0e509367213418206700842008763514</span></span><br></pre></td></tr></table></figure>
+<p>强等的绕过方法放在后文的 内置函数的参数松散性 一节中。</p>
+<h5 id="绕过-md5-函数注入-MySQL">绕过 md5()函数注入 MySQL</h5>
+<p><code>ffifdyop</code> 这个字符串被 md5 哈希了之后会变成 276f722736c95d99e921722cf9ed621c，这个字符串前几位刚好是 ‘ or ‘6（<code>'or'6\xc9]\x99\xe9!r,\xf9\xedb\x1c</code>），而 Mysql 刚好又会把 hex 转成 ascii 解释，因此拼接之后的形式是 <code>select * from 'admin' where password='' or '6xxxxx'</code></p>
+<p>等价于 or 一个永真式，因此相当于万能密码，可以绕过 md5()函数。</p>
+<p>或者 129581926211651571912466741651878684928，<br>
+md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
+<h4 id="十六进制转换">十六进制转换</h4>
+<p>还存在一种十六进制余字符串进行比较运算时的问题。例子如下：</p>
+<figure class="highlight 1c"><table><tr><td class="code"><pre><span class="line"><span class="string">"0x1e240"</span>==<span class="string">"123456"</span>		<span class="comment">//true</span></span><br><span class="line"><span class="string">"0x1e240"</span>==<span class="number">123456</span>		<span class="comment">//true</span></span><br><span class="line"><span class="string">"0x1e240"</span>==<span class="string">"1e240"</span>		<span class="comment">//false</span></span><br></pre></td></tr></table></figure>
+<p>当其中的一个字符串是0x开头的时候，PHP会将此字符串解析成为十进制然后再进行比较，0x1e240解析成为十进制就是123456，所以与 int 类型和 string 类型的 123456 比较都是相等。攻防平台中的<strong>起名字真难</strong>就是考察的这个特性。</p>
+<h4 id="json绕过">json绕过</h4>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">if</span> (<span class="keyword">isset</span>($_POST[<span class="string">'message'</span>])) &#123;</span><br><span class="line">    $message = json_decode($_POST[<span class="string">'message'</span>]);</span><br><span class="line">    $key =<span class="string">"*********"</span>;</span><br><span class="line">    <span class="keyword">if</span> ($message-&gt;key ==$key ) &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">"flag"</span>;</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">"fail"</span>;</span><br><span class="line">    &#125;</span><br><span class="line"> &#125;</span><br><span class="line"> <span class="keyword">else</span>&#123;</span><br><span class="line">     <span class="keyword">echo</span> <span class="string">"~~~~"</span>;</span><br><span class="line"> &#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+<p>输入一个json类型的字符串，json_decode函数解密成一个数组，判断数组中key的值是否等于$key的值，但$key的值我们不知道,这时我们构造一个和任意字符串返回为真的数组{“key”:true}。即可绕过。</p>
+<p>payload: message={“key”,true}</p>
+<h3 id="内置函数的参数松散性">内置函数的参数松散性</h3>
+<h4 id="md5-强等的绕过">md5()  强等的绕过</h4>
+<p>md5()中的需要是一个string类型的参数。如果md5 函数的参数是一个数组值，会导致函数返回 false。除了 md5 之外 sha1 函数也有这个特性。 例如传入为 <code>?a[]=1&amp;b[]=2</code></p>
+<p>或者找到 md5 值相等的二进制数据：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">a&#x3D;%4d%c9%68%ff%0e%e3%5c%20%95%72%d4%77%7b%72%15%87%d3%6f%a7%b2%1b%dc%56%b7%4a%3d%c0%78%3e%7b%95%18%af%bf%a2%02%a8%28%4b%f3%6e%8e%4b%55%b3%5f%42%75%93%d8%49%67%6d%a0%d1%d5%5d%83%60%fb%5f%07%fe%a2</span><br><span class="line"></span><br><span class="line">b&#x3D;%4d%c9%68%ff%0e%e3%5c%20%95%72%d4%77%7b%72%15%87%d3%6f%a7%b2%1b%dc%56%b7%4a%3d%c0%78%3e%7b%95%18%af%bf%a2%00%a8%28%4b%f3%6e%8e%4b%55%b3%5f%42%75%93%d8%49%67%6d%a0%d1%55%5d%83%60%fb%5f%07%fe%a2</span><br></pre></td></tr></table></figure>
+<h4 id="strcmp">strcmp()</h4>
+<p>strcmp()函数在PHP官方手册中的描述是<code>int strcmp ( string $str1 , string $str2 )</code>,需要给strcmp()传递2个string类型的参数。如果str1小于str2,返回-1，相等返回0，否则返回1。strcmp函数比较字符串的本质是将两个变量转换为ascii，然后进行减法运算，然后根据运算结果来决定返回值。<br>
+如果传入给出strcmp()的参数是其它类型，可能产生其它不希望的结果。如：</p>
+<figure class="highlight angelscript"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">array</span>=[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>];</span><br><span class="line">var_dump(strcmp($<span class="built_in">array</span>,<span class="string">'123'</span>)); <span class="comment">//null,在某种意义上null也就是相当于false，。</span></span><br></pre></td></tr></table></figure>
+<h4 id="switch">switch()</h4>
+<p>如果switch是数字类型的case的判断时，switch会将其中的参数转换为int类型。如下：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$i =<span class="string">"2abc"</span>;</span><br><span class="line"><span class="keyword">switch</span> ($i) &#123;</span><br><span class="line"><span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line"><span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line"><span class="keyword">case</span> <span class="number">2</span>:</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">"i is less than 3 but not negative"</span>;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line"><span class="keyword">case</span> <span class="number">3</span>:</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">"i is 3"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个时候程序输出的是<code>i is less than 3 but not negative</code>，是由于switch()函数将$i进行了类型转换，转换结果为2。</p>
+<h4 id="in-array">in_array()</h4>
+<p>在PHP手册中，in_array()函数的解释是<code>bool in_array ( mixed $needle , array $haystack [, bool $strict = FALSE ] )</code>,如果strict参数没有提供，那么in_array就会使用松散比较来判断$needle是否在$haystack中。当strince的值为true时，needls的类型和haystack中的类型会被严格比较。</p>
+<figure class="highlight reasonml"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">array</span>=<span class="literal">[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,'<span class="number">3</span>']</span>;</span><br><span class="line">var<span class="constructor">_dump(<span class="params">in_array</span>('<span class="params">abc</span>', $<span class="params">array</span>)</span>);  <span class="comment">//true</span></span><br><span class="line">var<span class="constructor">_dump(<span class="params">in_array</span>('1bc', $<span class="params">array</span>)</span>);	<span class="comment">//true</span></span><br></pre></td></tr></table></figure>
+<p>array_search()与in_array()也有一样的问题。</p>
+<h2 id="PHP-Filter-相关姿势">PHP Filter 相关姿势</h2>
+<figure class="highlight livecodeserver"><table><tr><td class="code"><pre><span class="line">php://<span class="built_in">filter</span>/<span class="built_in">read</span>=<span class="built_in">convert</span>.base64-encode/resource=</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>网络安全</category>
+      </categories>
+      <tags>
+        <tag>CTF</tag>
+        <tag>PHP</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Re:1 Config Archlinux From Scratch</title>
+    <url>/2020/10/17/Re-1-Config-Archlinux-From-Scratch/</url>
+    <content><![CDATA[<p>上一篇文章介绍了Archlinux的安装流程。但是，现在连个图形界面也没有，一堆效率导向的包都没有装上，这还玩个🔨啊。这篇来看看如何把Arch配置成用起来超爽的工具。因为到这里还没有装好中文输入法，所以和上一篇一样是英文的。英语水平不高，有错误的话，万分抱歉。<s>下次重装系统自己能看懂就行</s></p>
+<a id="more"></a>
+<h2 id="Create-a-new-user">Create a new user</h2>
+<p>It is unsafe to use root for daily use. It is better to create a ordinary user.</p>
+<p>Let’s create a new user named muted.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">useradd -m -G wheel muted</span><br></pre></td></tr></table></figure>
+<p><code>-m</code> stands for creating a new folder whose name is the same as your new user. You can use <code>~</code> to access it easily. <code>-G wheel</code> stands for adding the new user “muted” to a group named “wheel”.</p>
+<p>Set a password for this user:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">passwd muted</span><br></pre></td></tr></table></figure>
+<h2 id="Config-sudo">Config sudo</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ln -s /usr/bin/vim /usr/bin/vi</span><br><span class="line">visudo</span><br></pre></td></tr></table></figure>
+<p>Uncomment <code># %wheel ALL=(ALL)ALL</code>, then reboot. This time your new user is able to use <code>sudo</code> command.</p>
+<h2 id="Graphical-interface-installation">Graphical interface installation</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dhcpcd  <span class="comment"># Connet to the Internet</span></span><br><span class="line">sudo pacman -S xf86-video-intel  <span class="comment"># If your GPU is from Intel</span></span><br></pre></td></tr></table></figure>
+<p>See also: <a href="https://wiki.archlinux.org/index.php/Xorg#Driver_installation" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Xorg#Driver_installation</a></p>
+<p>Now install Xorg and some necessary packages:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S xorg xorg-server plasma dolphin kate kdialog konsole fsearch dragon ffmpegthumbs kde-meta-kdeadmin kde-meta-kdeutils kde-meta-kdegraphics sddm sddm-kcm</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> sddm</span><br></pre></td></tr></table></figure>
+<h2 id="Config-your-Internet">Config your Internet</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo systemctl <span class="built_in">disable</span> netctl</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> NetworkManager  <span class="comment"># Draw attention on UPPER and lower case</span></span><br><span class="line">sudo pacman -S network-manager-applet</span><br></pre></td></tr></table></figure>
+<h2 id="Use-pacman-mirror">Use pacman mirror</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/pacman.d/mirrorlist</span><br></pre></td></tr></table></figure>
+<p>Copy the mirrors you wants to use and paste them to the beginning of this file. One of the commonly used mirrors is <code>https://mirrors.tuna.tsinghua.edu.cn</code>.</p>
+<p>I chose <code>https://linux.xidian.edu.cn/mirrors/archlinux/$repo/os/$arch</code> (Only available under the campus network environment).</p>
+<h2 id="Use-archlinuxcn-repository">Use archlinuxcn repository</h2>
+<p>At the end of file add:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[archlinuxcn]</span><br><span class="line">Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/<span class="variable">$arch</span></span><br></pre></td></tr></table></figure>
+<p>If you are a ‘Xidianer’ too, you can also:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Server = https://linux.xidian.edu.cn/mirrors/archlinuxcn/<span class="variable">$arch</span></span><br></pre></td></tr></table></figure>
+<p>Then:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -Syy</span><br><span class="line">sudo pacman -Syu</span><br><span class="line">sudo pacman -S archlinuxcn-keyring</span><br></pre></td></tr></table></figure>
+<h2 id="Use-AUR-repository-with-yay">Use AUR repository with yay</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S yay</span><br><span class="line">yay -Syu --devel --combinedupgrade --save</span><br></pre></td></tr></table></figure>
+<p>Then change current <code>aururl</code> to <code>https://aur.tuna.tsinghua.edu.cn</code>.</p>
+<h2 id="Use-fish-shell-as-your-default-shell">Use fish shell as  your default shell</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fish</span><br></pre></td></tr></table></figure>
+<p>Set fish the default shell on Konsole: <code>Konsole -&gt; Settings -&gt; Edit Current Profile</code>, choose /bin/fish as default command, Then restart Konsole.</p>
+<p>Use fish as default user shell:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo chsh -s /usr/bin/fish root</span><br><span class="line">sudo chsh -s /usr/bin/fish [username]</span><br></pre></td></tr></table></figure>
+<p>Set greeting words:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">set</span> fish_greeting <span class="string">'Your Greeting Words'</span></span><br></pre></td></tr></table></figure>
+<p>Config fish shell:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fish_config</span><br></pre></td></tr></table></figure>
+<p>I recommend to set some abbreviations, for example:</p>
+<p><code>pc</code> is short for <code>proxychains</code></p>
+<p><code>pmc</code> is short for <code>sudo vim /etc/pacman.d/mirrorlist</code></p>
+<p><code>pmi</code> is short for <code>sudo pacman -S</code></p>
+<p><code>pms</code> is short for <code>sudo pacman -Ss</code></p>
+<p><code>pmu</code> is short for <code>sudo pacman -Syyu</code></p>
+<h2 id="Change-hosts-Github">Change hosts (Github)</h2>
+<p>Seems not very useful for me but… just record it here in case that some day I need it.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S dnsutils</span><br></pre></td></tr></table></figure>
+<p>Use <code>dig</code> or <code>nslookup</code> command to build a hosts file yourself.</p>
+<h2 id="Bypass-GFW">Bypass GFW</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S v2ray qv2ray proxychains-ng</span><br></pre></td></tr></table></figure>
+<p>More? …sorry but I won’t tell you more🤪</p>
+<p><strong>Caution! : Set your system time correctly first, or you can never success.</strong></p>
+<p>If you want some rules, look at here: <a href="https://github.com/Loyalsoldier/v2ray-rules-dat" target="_blank" rel="noopener">https://github.com/Loyalsoldier/v2ray-rules-dat</a>, just put geosite and geoip into <code>/usr/share/v2ray/</code>. Easy!</p>
+<h2 id="Fonts-config">Fonts config</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-sarasa-gothic nerd-fonts-jetbrains-mono wqy-microhei wqy-zenhei</span><br></pre></td></tr></table></figure>
+<p>Download the config file at <a href="https://bitbucket.org/szclsya/dotfiles/src/master/fontconfig/fonts.conf" target="_blank" rel="noopener">https://bitbucket.org/szclsya/dotfiles/src/master/fontconfig/fonts.conf</a>, put it into <code>~/.config/fontconfig/fonts.conf</code>, log out and log in, then it works.</p>
+<h2 id="Install-Google-chrome">Install Google-chrome</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S google-chrome</span><br></pre></td></tr></table></figure>
+<p>Caution: the bin file named <code>google-chrome-stable</code>, so if you want to start it use command line, use:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">google-chrome-stable</span><br></pre></td></tr></table></figure>
+<h2 id="Chinese-input">Chinese input</h2>
+<p>I chose Rime(fcitx5) as my Chinese input scheme instead of sogou pinyin because the latter has some strange conflict with Jetbrains IDEs. <s>🔪🔪🔪Fuck Sogou</s></p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fcitx5-im fcitx5-configtool</span><br><span class="line">sudo pacman -S fcitx5-chinese-addons fcitx5-gtk fcitx5-qt fcitx5-pinyin-zhwiki kcm-fcitx5</span><br><span class="line">sudo pacman -S fcitx5-rime</span><br></pre></td></tr></table></figure>
+<p><code>fcitx-configtool -&gt; add rime</code></p>
+<p>Now let’s config it:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim ~/.xprofile</span><br></pre></td></tr></table></figure>
+<p>Then add:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">export</span> GTK_IM_MODULE=fcitx</span><br><span class="line"><span class="built_in">export</span> QT_IM_MODULE-fcitx</span><br><span class="line"><span class="built_in">export</span> XMODIFIERS=<span class="string">"@im=fcitx"</span></span><br><span class="line">fcitx5 &amp;</span><br></pre></td></tr></table></figure>
+<p>Log out then Log in. It works. But… It’s not BEEEAAAUTIFUL enough!</p>
+<p><strong>RXnb! Let’s use RX’s skin for fcitx5 input method!</strong><br>
+<a href="https://github.com/Reverier-Xu/RxWe10-Fcitx5" target="_blank" rel="noopener">https://github.com/Reverier-Xu/RxWe10-Fcitx5</a><br>
+Put those theme file to <code>/usr/share/fcitx5/themes/</code>, and set <code>~/.config/fcitx5/conf/classicui.conf</code>:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 垂直候选列表</span></span><br><span class="line">Vertical Candidate List=False</span><br><span class="line"></span><br><span class="line"><span class="comment"># 按屏幕 DPI 使用</span></span><br><span class="line">PerScreenDPI=True</span><br><span class="line"></span><br><span class="line"><span class="comment"># Font (设置成你喜欢的字体)</span></span><br><span class="line">Font=<span class="string">"字体字体字体字体写在这里"</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 主题</span></span><br><span class="line">Theme=RxWe10-light</span><br></pre></td></tr></table></figure>
+<p>Or you can use some famous theme such as:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fcitx5-material-color</span><br></pre></td></tr></table></figure>
+<p>See Also: <a href="https://github.com/hosxy/Fcitx5-Material-Color" target="_blank" rel="noopener">https://github.com/hosxy/Fcitx5-Material-Color</a></p>
+<p>If you want to use simplified Chinese, create a new file named <code>default.custom.yaml</code> under <code>$HOME/.local/share/fcitx5/rime/</code> . With <code>default.yaml</code> in <code>./build</code> folder as reference, you can customize your settings freely. Also, you can turn to <code>/usr/share/rime-data/</code> to do those things.</p>
+<h2 id="Install-Jetbrains-IDEs">Install Jetbrains IDEs</h2>
+<p>Developers necessity. Use <code>pacman</code> or <code>yay</code> .</p>
+<h2 id="Install-Tencent-shits">Install Tencent shits</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/pacman.conf</span><br></pre></td></tr></table></figure>
+<p>To use deepin-wine I have to enable multilib since my Archlinux is x64 version (?)</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -Sy deepin.com.qq.office</span><br></pre></td></tr></table></figure>
+<p>Now TIM is installed. But we cannot run it now since it is designed to be compatible with GTK style desktops. So we:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S gnome-settings-daemon</span><br></pre></td></tr></table></figure>
+<p><code>System Settings -&gt; Start up and shut down -&gt; Autostart -&gt; Add Script -&gt; /usr/lib/gsd-xsettings</code></p>
+<p>Now TIM is available. Though it is not easy to use as it is on Windows, we barely HAVE a TIM on Arch at least.</p>
+<h2 id="References">References</h2>
+<ol>
+<li><a href="https://www.viseator.com/2017/05/19/arch_setup/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/19/arch_setup/</a></li>
+<li><a href="https://www.wootec.top/2019/11/02/%E5%A6%82%E4%BD%95%E5%9C%A8Linux%E4%B8%8A%E4%BC%98%E9%9B%85%E7%9A%84%E5%A0%95%E8%90%BD/" target="_blank" rel="noopener">https://www.wootec.top/2019/11/02/如何在Linux上优雅的堕落/</a></li>
+<li><a href="https://www.wootec.top/2019/11/15/%E5%A6%82%E4%BD%95%E5%9C%A8Linux%E4%B8%8A%E4%BC%98%E9%9B%85%E7%9A%84%E5%A0%95%E8%90%BD-2/" target="_blank" rel="noopener">https://www.wootec.top/2019/11/15/如何在Linux上优雅的堕落-2/</a></li>
+<li><a href="https://rocka.me/article/arch-linux-kde-plasma-install-and-config" target="_blank" rel="noopener">https://rocka.me/article/arch-linux-kde-plasma-install-and-config</a></li>
+</ol>
+]]></content>
+      <categories>
+        <category>系统</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>Tkinter学习笔记</title>
     <url>/2020/06/16/Tkinter%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/</url>
     <content><![CDATA[<p>简单的Python GUI… 要想强大一点还是去用PyQt了。</p>
@@ -325,67 +495,6 @@
       </tags>
   </entry>
   <entry>
-    <title>PHP相关姿势</title>
-    <url>/2020/06/16/PHP%E7%9B%B8%E5%85%B3%E5%A7%BF%E5%8A%BF/</url>
-    <content><![CDATA[<p>整理 CTF 中 PHP 相关的利用姿势，不定期补充。</p>
-<a id="more"></a>
-<h2 id="弱类型相关姿势">弱类型相关姿势</h2>
-<p>弱类型的语言对变量的数据类型没有限制，你可以在任何地时候将变量赋值给任意的其他类型的变量，同时变量也可以转换成任意地其他类型的数据。</p>
-<h3 id="比较操作符">比较操作符</h3>
-<h4 id="类型转换">类型转换</h4>
-<p>弱等的比较中不需左右两边的类型相等，会经过转换变成相同的类型后比较，由此产生安全问题。如：</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$a=<span class="keyword">NULL</span>;$b=<span class="keyword">FALSE</span>;  <span class="comment">//$a==$b</span></span><br><span class="line">$a=<span class="string">''</span>;$b=<span class="keyword">NULL</span>;  <span class="comment">//$a==$b</span></span><br></pre></td></tr></table></figure>
-<p>还有，bool类型的true跟任意字符串可以弱类型相等。</p>
-<p>以及类型转换的一些规则，如字符串转数字会从不满足转换规则的位置开始截断只取最前边的数字部分而不会报错等。（ 注：数字到字符串可以用strval()，字符串和数字可以用intval() ）</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="number">0</span> == <span class="string">'0'</span>		<span class="comment">//true</span></span><br><span class="line"><span class="number">0</span> == <span class="string">'abcdefg'</span>	<span class="comment">//true</span></span><br><span class="line"><span class="number">0</span> === <span class="string">'abcdefg'</span>	<span class="comment">//false</span></span><br><span class="line"><span class="number">1</span> == <span class="string">'1abcdef'</span>	<span class="comment">//true</span></span><br><span class="line"><span class="string">"0e123456"</span>==<span class="string">"0e4456789"</span>   <span class="comment">//true</span></span><br></pre></td></tr></table></figure>
-<h4 id="哈希比较">哈希比较</h4>
-<h5 id="md5-弱等的绕过">md5 弱等的绕过</h5>
-<p>md5(‘240610708’) == md5(‘QNKCDZO’) (0exxxxxxx)</p>
-<p>在进行比较运算时，如果遇到了0e\d+这种字符串，就会将这种字符串解析为科学计数法。所以上面例子中2个数的值都是0因而就相等了。如果不满足0e\d+这种模式就不会相等。</p>
-<p>0e\d+ 的字符串整理：</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">QNKCDZO</span><br><span class="line"><span class="number">0e830400451993494058024219903391</span></span><br><span class="line">s878926199a</span><br><span class="line"><span class="number">0e545993274517709034328855841020</span></span><br><span class="line">s155964671a</span><br><span class="line"><span class="number">0e342768416822451524974117254469</span></span><br><span class="line">s214587387a</span><br><span class="line"><span class="number">0e848240448830537924465865611904</span></span><br><span class="line">s214587387a</span><br><span class="line"><span class="number">0e848240448830537924465865611904</span></span><br><span class="line">s878926199a</span><br><span class="line"><span class="number">0e545993274517709034328855841020</span></span><br><span class="line">s1091221200a</span><br><span class="line"><span class="number">0e940624217856561557816327384675</span></span><br><span class="line">s1885207154a</span><br><span class="line"><span class="number">0e509367213418206700842008763514</span></span><br></pre></td></tr></table></figure>
-<p>强等的绕过方法放在后文的 内置函数的参数松散性 一节中。</p>
-<h5 id="绕过-md5-函数注入-MySQL">绕过 md5()函数注入 MySQL</h5>
-<p><code>ffifdyop</code> 这个字符串被 md5 哈希了之后会变成 276f722736c95d99e921722cf9ed621c，这个字符串前几位刚好是 ‘ or ‘6（<code>'or'6\xc9]\x99\xe9!r,\xf9\xedb\x1c</code>），而 Mysql 刚好又会把 hex 转成 ascii 解释，因此拼接之后的形式是 <code>select * from 'admin' where password='' or '6xxxxx'</code></p>
-<p>等价于 or 一个永真式，因此相当于万能密码，可以绕过 md5()函数。</p>
-<p>或者 129581926211651571912466741651878684928，<br>
-md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
-<h4 id="十六进制转换">十六进制转换</h4>
-<p>还存在一种十六进制余字符串进行比较运算时的问题。例子如下：</p>
-<figure class="highlight 1c"><table><tr><td class="code"><pre><span class="line"><span class="string">"0x1e240"</span>==<span class="string">"123456"</span>		<span class="comment">//true</span></span><br><span class="line"><span class="string">"0x1e240"</span>==<span class="number">123456</span>		<span class="comment">//true</span></span><br><span class="line"><span class="string">"0x1e240"</span>==<span class="string">"1e240"</span>		<span class="comment">//false</span></span><br></pre></td></tr></table></figure>
-<p>当其中的一个字符串是0x开头的时候，PHP会将此字符串解析成为十进制然后再进行比较，0x1e240解析成为十进制就是123456，所以与 int 类型和 string 类型的 123456 比较都是相等。攻防平台中的<strong>起名字真难</strong>就是考察的这个特性。</p>
-<h4 id="json绕过">json绕过</h4>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line"><span class="keyword">if</span> (<span class="keyword">isset</span>($_POST[<span class="string">'message'</span>])) &#123;</span><br><span class="line">    $message = json_decode($_POST[<span class="string">'message'</span>]);</span><br><span class="line">    $key =<span class="string">"*********"</span>;</span><br><span class="line">    <span class="keyword">if</span> ($message-&gt;key ==$key ) &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">"flag"</span>;</span><br><span class="line">    &#125; </span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">"fail"</span>;</span><br><span class="line">    &#125;</span><br><span class="line"> &#125;</span><br><span class="line"> <span class="keyword">else</span>&#123;</span><br><span class="line">     <span class="keyword">echo</span> <span class="string">"~~~~"</span>;</span><br><span class="line"> &#125;</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
-<p>输入一个json类型的字符串，json_decode函数解密成一个数组，判断数组中key的值是否等于$key的值，但$key的值我们不知道,这时我们构造一个和任意字符串返回为真的数组{“key”:true}。即可绕过。</p>
-<p>payload: message={“key”,true}</p>
-<h3 id="内置函数的参数松散性">内置函数的参数松散性</h3>
-<h4 id="md5-强等的绕过">md5()  强等的绕过</h4>
-<p>md5()中的需要是一个string类型的参数。如果md5 函数的参数是一个数组值，会导致函数返回 false。除了 md5 之外 sha1 函数也有这个特性。 例如传入为 <code>?a[]=1&amp;b[]=2</code></p>
-<p>或者找到 md5 值相等的二进制数据：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">a&#x3D;%4d%c9%68%ff%0e%e3%5c%20%95%72%d4%77%7b%72%15%87%d3%6f%a7%b2%1b%dc%56%b7%4a%3d%c0%78%3e%7b%95%18%af%bf%a2%02%a8%28%4b%f3%6e%8e%4b%55%b3%5f%42%75%93%d8%49%67%6d%a0%d1%d5%5d%83%60%fb%5f%07%fe%a2</span><br><span class="line"></span><br><span class="line">b&#x3D;%4d%c9%68%ff%0e%e3%5c%20%95%72%d4%77%7b%72%15%87%d3%6f%a7%b2%1b%dc%56%b7%4a%3d%c0%78%3e%7b%95%18%af%bf%a2%00%a8%28%4b%f3%6e%8e%4b%55%b3%5f%42%75%93%d8%49%67%6d%a0%d1%55%5d%83%60%fb%5f%07%fe%a2</span><br></pre></td></tr></table></figure>
-<h4 id="strcmp">strcmp()</h4>
-<p>strcmp()函数在PHP官方手册中的描述是<code>int strcmp ( string $str1 , string $str2 )</code>,需要给strcmp()传递2个string类型的参数。如果str1小于str2,返回-1，相等返回0，否则返回1。strcmp函数比较字符串的本质是将两个变量转换为ascii，然后进行减法运算，然后根据运算结果来决定返回值。<br>
-如果传入给出strcmp()的参数是其它类型，可能产生其它不希望的结果。如：</p>
-<figure class="highlight angelscript"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">array</span>=[<span class="number">1</span>,<span class="number">2</span>,<span class="number">3</span>];</span><br><span class="line">var_dump(strcmp($<span class="built_in">array</span>,<span class="string">'123'</span>)); <span class="comment">//null,在某种意义上null也就是相当于false，。</span></span><br></pre></td></tr></table></figure>
-<h4 id="switch">switch()</h4>
-<p>如果switch是数字类型的case的判断时，switch会将其中的参数转换为int类型。如下：</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$i =<span class="string">"2abc"</span>;</span><br><span class="line"><span class="keyword">switch</span> ($i) &#123;</span><br><span class="line"><span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line"><span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line"><span class="keyword">case</span> <span class="number">2</span>:</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">"i is less than 3 but not negative"</span>;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line"><span class="keyword">case</span> <span class="number">3</span>:</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">"i is 3"</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个时候程序输出的是<code>i is less than 3 but not negative</code>，是由于switch()函数将$i进行了类型转换，转换结果为2。</p>
-<h4 id="in-array">in_array()</h4>
-<p>在PHP手册中，in_array()函数的解释是<code>bool in_array ( mixed $needle , array $haystack [, bool $strict = FALSE ] )</code>,如果strict参数没有提供，那么in_array就会使用松散比较来判断$needle是否在$haystack中。当strince的值为true时，needls的类型和haystack中的类型会被严格比较。</p>
-<figure class="highlight reasonml"><table><tr><td class="code"><pre><span class="line">$<span class="built_in">array</span>=<span class="literal">[<span class="number">0</span>,<span class="number">1</span>,<span class="number">2</span>,'<span class="number">3</span>']</span>;</span><br><span class="line">var<span class="constructor">_dump(<span class="params">in_array</span>('<span class="params">abc</span>', $<span class="params">array</span>)</span>);  <span class="comment">//true</span></span><br><span class="line">var<span class="constructor">_dump(<span class="params">in_array</span>('1bc', $<span class="params">array</span>)</span>);	<span class="comment">//true</span></span><br></pre></td></tr></table></figure>
-<p>array_search()与in_array()也有一样的问题。</p>
-<h2 id="PHP-Filter-相关姿势">PHP Filter 相关姿势</h2>
-<figure class="highlight livecodeserver"><table><tr><td class="code"><pre><span class="line">php://<span class="built_in">filter</span>/<span class="built_in">read</span>=<span class="built_in">convert</span>.base64-encode/resource=</span><br></pre></td></tr></table></figure>]]></content>
-      <categories>
-        <category>网络安全</category>
-      </categories>
-      <tags>
-        <tag>CTF</tag>
-        <tag>PHP</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Ubuntu+gunicorn+nginx在ECS上搭建Flask环境</title>
     <url>/2020/10/01/gunicorn+nginx%E5%9C%A8ECS%E4%B8%8A%E6%90%AD%E5%BB%BAFlask%E7%8E%AF%E5%A2%83/</url>
     <content><![CDATA[<p>网络上能搜索到的资源基本都有些疏漏的地方，把自己的配置过程Po上来做个参考防止重复踩坑。</p>
@@ -466,6 +575,248 @@ md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
       <tags>
         <tag>Python</tag>
         <tag>Web</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>文件上传操作整理</title>
+    <url>/2020/07/20/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%93%8D%E4%BD%9C%E6%95%B4%E7%90%86/</url>
+    <content><![CDATA[<p>获取Webshell的常见操作，整理一下。</p>
+<a id="more"></a>
+<h2 id="上传及绕过">上传及绕过</h2>
+<h3 id="常见上传点">常见上传点</h3>
+<ul>
+<li>上传头像</li>
+<li>上传相册</li>
+<li>上传附件</li>
+<li>添加文章图片</li>
+<li>前台留言资料上传</li>
+<li>编辑器文件上传</li>
+</ul>
+<h3 id="后缀绕过">后缀绕过</h3>
+<ul>
+<li>PHP:php2、php3、php5、phtml、pht(是否解析需要根据配置文件中设置类型来决定)</li>
+<li>ASP：asa、cer、cdx</li>
+<li>ASPX：ascx、ashx、asac</li>
+<li>JSP：jsp、jspx、jspf</li>
+</ul>
+<h3 id="绕过类型">绕过类型</h3>
+<ul>
+<li>Content-Type绕过</li>
+<li>前端绕过</li>
+<li>文件解析规则绕过</li>
+<li>Windows环境特性绕过</li>
+<li>文件名大小写绕过</li>
+<li>双写绕过</li>
+<li>点空格绕过</li>
+<li>文件头绕过</li>
+<li>条件竞争绕过</li>
+</ul>
+<h2 id="漏洞在系统中的差异">漏洞在系统中的差异</h2>
+<h3 id="IIS-5-x-6-0-解析漏洞">IIS 5.x/6.0 解析漏洞</h3>
+<p>1、当创建.asp的文件目录的时候，在此目录下的任意文件，服务器都解析为asp文件。例如：<br>
+漏洞目录利用形式：<a href="http://www.xxx.com/xx.asp/xx.jpg%E3%80%82" target="_blank" rel="noopener">www.xxx.com/xx.asp/xx.jpg。</a><br>
+xx.jpg的内容可以为一段合法的asp脚本文件。<br>
+2、服务器默认不解析”;“以后的内容，导致xx.asp;.jpg被解析成xx.asp<br>
+漏洞文件利用形式：<a href="http://www.xxx.com/xx.asp;.jpg" target="_blank" rel="noopener">www.xxx.com/xx.asp;.jpg</a><br>
+xx.jpg的内容可以为一段合法的asp脚本文件。</p>
+<h3 id="Nginx-解析漏洞">Nginx 解析漏洞</h3>
+<p>在低版本Nginx中存在一个由PHP-CGI导致的文件解析漏洞。在PHP的配置文件中有一个关键的选项cgi.fix_pathinfo在本机中位于php.ini配置文件中，默认是开启的，当URL中有不存在的文件时，PHP就会默认向前解析。</p>
+<p>普遍的做法是在Nginx配置文件中通过正则匹配设置SCRIPT_FILENAME。访问<code>http://www.xx.com/phpinfo.jpg/1.php</code> 这个URL时，$fastcgi_script_name会被设置为“phpinfo.jpg/1.php”，然后构造成SCRIPT_FILENAME传递给PHP-CGI，但是PHP为什么会接受这样的参数，并将phpinfo.jpg作为PHP文件解析呢？这就要说到fix_pathinfo这个选项了。如果开启了这个选项，那么就会触发在PHP中的如下逻辑：PHP会认为SCRIPT_FILENAME是phpinfo.jpg，而1.php是PATH_INFO，所以就会将phpinfo.jpg作为PHP文件来解析了。</p>
+<p>在默认Fast-CGI开启状况下上传名字为xx.jpg,内容为:<br>
+<code>&lt;?PHP fputs(fopen('shell.php','w'),'&lt;?php eval($_POST[cmd])?&gt;');?&gt;</code></p>
+<p>然后访问xx.jpg/.php,在这个目录下就会生成一句话木马shell.php。</p>
+<h3 id="Apache-解析漏洞">Apache 解析漏洞</h3>
+<p>Apache 在1.x和2.x版本中存在解析漏洞，例如如下地址格式：</p>
+<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">www<span class="selector-class">.xxxx</span>.com/apache<span class="selector-class">.php</span><span class="selector-class">.bbb</span>.aaa</span><br></pre></td></tr></table></figure>
+<p>Apache从右至左开始判断后缀，若aaa非可识别后缀，再判断bbb，直到找到可识别后缀为止，然后将该可识别后缀进解析，因此如上地址解析为访问apache.php文件。</p>
+<p>另外对于Apache解析漏洞的正确说法应该是，使用module模式与php结合的所有版本apache存在未知扩展名解析漏洞，使用fastcgi模式与php结合的所有版本apache不存在此漏洞。而是否解析的后缀名在文件mime.types（互联网媒体类型（Internet media type，也称为MIME类型（<em>MIME type</em>）或内容类型（<em>content type</em>））中查找是否出现。</p>
+<h2 id="测试方法">测试方法</h2>
+<h3 id="前端验证">前端验证</h3>
+<p>只在前端利用JS来做效验，采用禁用JS上传、抓包上传都可以绕过此处限制。</p>
+<h3 id="htaccess规则文件绕过">.htaccess规则文件绕过</h3>
+<p>在一些启用了.htaccess文件的网站上就可以使用此文件类型来绕过限制较全面的黑名单过滤。</p>
+<p>先上传一个.htaccess文件，内容为：<code>AddType application/x-httpd-php .aaa</code>。然后再上传文件后缀为.aaa的文件，让其解析为php类型文件。上传成功后即可访问并getshell。</p>
+<h3 id="文件名后缀大小写混合绕过">文件名后缀大小写混合绕过</h3>
+<p>在对后缀的判断中，如果只是对字符串进行单独的比较来判断是不是限制文件，可以采用后缀名大小写绕过形式。如<code>a.PHp</code>。</p>
+<h3 id="Windows文件流特性绕过">Windows文件流特性绕过</h3>
+<p>流文件，即NTFS交换数据流（alternate data  streams，简称ADS），是NTFS磁盘格式的一个特性，在NTFS文件系统下，每个文件都可以存在多个数据流，就是说除了主文件流之外还可以有许多非主文件流寄宿在主文件流中，它使用资源派生来维持与文件相关的信息。创建一个数据交换流文件的方法很简单，命令为“宿主文件:准备与宿主文件关联的数据流文件”。</p>
+<p>上传文件：<code>xxx.php::$data</code>。访问时可以直接访问xxx.php文件。</p>
+<h3 id="00截断绕过">%00截断绕过</h3>
+<p>以上问题被绕过的根本原因是采用了一些有缺陷的黑名单限制，一般采用白名单的限制会减少相当多的绕过问题产生，但是并不意味着一定安全，在某些没有处理严格的程序上，仍然可以采用截断绕过的形式。</p>
+<p>例如：</p>
+<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$is_upload = <span class="keyword">false</span>;</span><br><span class="line">$msg = <span class="keyword">null</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>($_POST[<span class="string">'submit'</span>]))&#123;</span><br><span class="line">    $ext_arr = <span class="keyword">array</span>(<span class="string">'jpg'</span>,<span class="string">'png'</span>,<span class="string">'gif'</span>);</span><br><span class="line">    $file_ext = substr($_FILES[<span class="string">'upload_file'</span>][<span class="string">'name'</span>],strrpos($_FILES[<span class="string">'upload_file'</span>][<span class="string">'name'</span>],<span class="string">"."</span>)+<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span>(in_array($file_ext,$ext_arr))&#123;</span><br><span class="line">        $temp_file = $_FILES[<span class="string">'upload_file'</span>][<span class="string">'tmp_name'</span>];</span><br><span class="line">        $img_path = $_POST[<span class="string">'save_path'</span>].<span class="string">"/"</span>.rand(<span class="number">10</span>, <span class="number">99</span>).date(<span class="string">"YmdHis"</span>).<span class="string">"."</span>.$file_ext;</span><br><span class="line">        <span class="keyword">if</span>(move_uploaded_file($temp_file,$img_path))&#123;</span><br><span class="line">            $is_upload = <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            $msg = <span class="string">"上传失败"</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        $msg = <span class="string">"只允许上传.jpg|.png|.gif类型文件！"</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看出代码采用的白名单校验，只允许上传图片格式，理论上这个上传是不好绕过的。但是后面采用保存文件的时候，是路径拼接的形式，而路径又是从前端获取，所以我们可以采用在路径上截断。如下上传，显示文件路径中有个空格，这并不是真正意义上的空格，而是%00截断后显示成的空格。</p>
+<p><img src="https://misakikata.github.io/2019/05/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/1559095054720.png" alt="1559095054720"></p>
+<h3 id="文件头检测绕过">文件头检测绕过</h3>
+<p>JPG：文件头前十个字节为<code>FF D8 FF E0 00 10 4A 46 49 46</code>，FF D8代表SOI标记，意思是图像文件开始值。<code>4A 46 49 46</code>代表字符串JFIF标记。</p>
+<p>PNG：开头4字节为右栏中<code>‰PNG</code>字样，PNG的8字节文件署名域用来识别该文件是不是PNG文件。也就是<code>89 50 4E 47 0D 0A 1A 0A</code>。</p>
+<p>GIF：GIF89a</p>
+<h2 id="利用工具实现FUZZ">利用工具实现FUZZ</h2>
+<p>很多网站对上传进行拦截的时候采取的是黑名单校验，当我们看到黑名单的时候就可以考虑采取修改后缀、截断等方式尝试绕过。</p>
+<p>采用工具 <a href="https://github.com/c0ny1/upload-fuzz-dic-builder" target="_blank" rel="noopener">https://github.com/c0ny1/upload-fuzz-dic-builder</a> 来生成fuzz的字典。执行命令:</p>
+<figure class="highlight css"><table><tr><td class="code"><pre><span class="line"><span class="selector-tag">python</span> <span class="selector-tag">upload-fuzz-dic-builder</span><span class="selector-class">.py</span> <span class="selector-tag">-n</span> <span class="selector-tag">test</span> <span class="selector-tag">-a</span> <span class="selector-tag">jpg</span> <span class="selector-tag">-l</span> <span class="selector-tag">php</span> <span class="selector-tag">-m</span> <span class="selector-tag">apache</span> <span class="selector-tag">--os</span> <span class="selector-tag">win</span> <span class="selector-tag">-o</span> <span class="selector-tag">upload_file</span><span class="selector-class">.txt</span></span><br></pre></td></tr></table></figure>
+<p>把生成的字典导入burp中，同时取消payload-encoding的选中状态。执行后可以看到有些php文件上传成功。然后访问其中上传成功的文件，查看是否执行。</p>
+]]></content>
+      <categories>
+        <category>网络安全</category>
+      </categories>
+      <tags>
+        <tag>CTF</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Re:0 Install Archlinux From Scratch</title>
+    <url>/2020/10/17/Re-0-Install-Archlinux-From-Scratch/</url>
+    <content><![CDATA[<p>前几天手贱把自己原来的Manjaro系统搞炸了，于是趁这个机会重装了自己一直心心念念的Arch，也算是从零开始的Arch生活了吧。因为这篇博客是在装系统的过程中写的，当时还没有配置中文的输入法，所以用了英文来写。英文水平有限肯定会出一些错误，还请海涵。<s>自己再装的时候能看懂就行</s></p>
+<a id="more"></a>
+<h2 id="Prepare-an-installation-medium">Prepare an installation medium</h2>
+<p>I used rufus on Windows 10 to make my U-disk an installation medium. I chose dd mode of rufus. Make sure there is an empty partition on your disk.</p>
+<p>I will go straight to the next step because this is easy.</p>
+<h2 id="Pre-Installation">Pre-Installation</h2>
+<h3 id="Boot-the-live-environment">Boot the live environment</h3>
+<p>Disable secure boot. Then restart your PC and boot from your USB device. Choose <code>Boot Arch Linux (x86_64)</code> , now you can see Archlinux is ready to load contents. Finally you will logged in on the first virtual console as the root user, and presented with a <code>zsh</code> shell prompt. You can autocomplete your commands using <code>tab</code> , OHHHHHH!</p>
+<h3 id="Verify-the-boot-mode">Verify the boot mode</h3>
+<p>To verify the boot mode, list the efivars directory:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ls /sys/firmware/efi/efivars</span><br></pre></td></tr></table></figure>
+<p>If the command shows the directory without error, then the system is booted in UEFI mode. If the directory does not exist, the system may be booted in BIOS (or CSM) mode. If the system did not boot in the mode you desired, refer to your motherboard’s manual.</p>
+<p>Or, a more secure way is <code>fdisk -l</code> ,if your SSD (or HDD) shows its <code>Disklabel type</code> is <code>gpt</code> and there is a small partition whose type is <code>EFI System</code> , Then your boot mode can be verified to be EFI.</p>
+<h3 id="Connect-to-the-Internet">Connect to the Internet</h3>
+<p>Arch needs network connection to complete its installation.</p>
+<p>Ensure your network interface is listed and enabled:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ip link</span><br></pre></td></tr></table></figure>
+<p>For wired connection:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dhcpcd</span><br></pre></td></tr></table></figure>
+<p>For wireless connection:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">iwctl</span><br><span class="line">device list</span><br><span class="line">station wlan0 scan</span><br><span class="line">station wlan0 get-networks</span><br><span class="line">station wlan0 connect `xxxxx`</span><br></pre></td></tr></table></figure>
+<p>Check if you are connected to the internet:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ping baidu.com</span><br></pre></td></tr></table></figure>
+<p>If everything is OK, quit iwd:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">quit</span><br></pre></td></tr></table></figure>
+<h3 id="Update-the-system-clock">Update the system clock</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">timedatectl <span class="built_in">set</span>-ntp <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>To check the service status, use <code>timedatectl status</code>.</p>
+<h3 id="Partition-the-disks">Partition the disks</h3>
+<table>
+<thead>
+<tr>
+<th>Device Type</th>
+<th>File Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SATA/SAS/USB</td>
+<td>/dev/sda,/dev/sdb,……</td>
+</tr>
+<tr>
+<td>IDE</td>
+<td>/dev/hd0,/dev/hd1,……</td>
+</tr>
+<tr>
+<td>VIRTIO-BLOCK</td>
+<td>/dev/vda,/dev/vdb,……</td>
+</tr>
+<tr>
+<td>M2(SSD)</td>
+<td>/dev/nvme0,/dev/nvme1</td>
+</tr>
+<tr>
+<td>SD/MMC/EMMC(Card)</td>
+<td>/dev/mmcblk0,/dev/mmcblk1</td>
+</tr>
+<tr>
+<td>CD drive</td>
+<td>/dev/cdrom,/dev/sr0,/dev/sr1</td>
+</tr>
+</tbody>
+</table>
+<p>When recognized by the live system, disks are assigned to a <a href="https://wiki.archlinux.org/index.php/Block_device" target="_blank" rel="noopener">block device</a> such as <code>/dev/sda</code>, <code>/dev/nvme0n1</code> or <code>/dev/mmcblk0</code>. To identify these devices, use <code>lsblk</code> or <code>fdisk</code>.</p>
+<p>I boot my Arch in UEFI mode, so first I must create a boot partition (EFI system partition).</p>
+<h4 id="Create-a-boot-partition">Create a boot partition</h4>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fdisk /dev/&#123;YOUR DISK&#125;  <span class="comment"># Example: fdisk /dev/sdx  or  fdisk /dev/nvmex</span></span><br></pre></td></tr></table></figure>
+<p>See usages of commands by typing <code>m</code> and enter.</p>
+<p>Enter <code>n</code> to create a new partition. You are asked to select the starting sector, generally we type enter (select by default). Then enter end sector or partition size. I used <code>+512M</code> .</p>
+<p>Enter <code>p</code> to check if it works. Enter <code>t</code> to change the type of your new partition. Enter <code>l</code> to see all types supported. Change it to EFI.</p>
+<p>Enter <code>w</code> to save. You can check whether there is something wrong before that by <code>p</code>.</p>
+<p>Format it:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkfs.fat -F32 /dev/&#123;YOUR BOOT PARTITION&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="Root-partition">Root partition</h4>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fdisk /dev/&#123;YOUR DISK&#125;</span><br></pre></td></tr></table></figure>
+<p>Create a new partition table if there is not one exist. I already have one on my disk so I go on directly.</p>
+<p>Enter <code>n</code> to create a new partition. I want my new partition fill up the free space completely, so I use enter to choose the default.</p>
+<p>Enter <code>p</code> then <code>w</code> just like creating your boot partition.</p>
+<p>Format it:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkfs.ext4 /dev/P&#123;YOUR ROOT PARTITION&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="Mount-the-file-systems">Mount the file systems</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mount /dev/&#123;YOUR ROOT PARTITION&#125; /mnt</span><br><span class="line">mkdir /mnt/boot</span><br><span class="line">mount /dev/&#123;YOUR BOOT PARTITION&#125; /mnt/boot</span><br></pre></td></tr></table></figure>
+<h2 id="Installation">Installation</h2>
+<h3 id="Use-Pacman-Mirror">Use Pacman Mirror</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/pacman.d/mirrorlist</span><br></pre></td></tr></table></figure>
+<p>Copy the mirrors you wants to use and paste them to the beginning of this file. One of the commonly used mirrors is <code>https://mirrors.tuna.tsinghua.edu.cn</code>.</p>
+<p>I chose <code>https://linux.xidian.edu.cn/mirrors/archlinux/$repo/os/$arch</code> (Only available under the campus network environment).</p>
+<h3 id="Install-essential-packages">Install essential packages</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacstrap /mnt base base-devel linux linux-firmware dhcpcd</span><br></pre></td></tr></table></figure>
+<h2 id="Configure-the-system">Configure the system</h2>
+<h3 id="Fstab">Fstab</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">genfstab -L /mnt &gt;&gt; /mnt/etc/fstab</span><br></pre></td></tr></table></figure>
+<p>We need a check to make sure it is right since it is an important step. Check the resulting <code>/mnt/etc/fstab</code> file, and edit it in case of errors:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">cat /mnt/etc/fstab</span><br></pre></td></tr></table></figure>
+<h3 id="Chroot">Chroot</h3>
+<p><code>chroot</code> means ‘change root’. Change root into the new system:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">arch-chroot /mnt</span><br></pre></td></tr></table></figure>
+<p>We can also use this command to fix our system if there is some problem with it.</p>
+<h3 id="Time-zone">Time zone</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime</span><br><span class="line">hwclock --systohc</span><br></pre></td></tr></table></figure>
+<h3 id="Install-necessary-packages">Install necessary packages</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S vim dialog wpa_supplicant ntfs-3g networkmanager netctl</span><br></pre></td></tr></table></figure>
+<h3 id="Localization">Localization</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/locale.gen</span><br></pre></td></tr></table></figure>
+<p>Uncomment <code>zh_CN.UTF-8 UTF-8</code> <code>zh_HK.UTF-8 UTF-8</code> <code>zh_TW.UTF-8 UTF-8</code> <code>en_US.UTF-8 UTF-8</code> .</p>
+<p>Then <code>:wq</code> save and quit.</p>
+<p>Generate the locales by running:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">locale-gen</span><br></pre></td></tr></table></figure>
+<p>Config locale file:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/locale.conf</span><br></pre></td></tr></table></figure>
+<p>Add the following line to the first line of this file:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">LANG=en_US.UTF-8</span><br></pre></td></tr></table></figure>
+<p><code>:wq</code> . Fine.</p>
+<h3 id="Network-configuration">Network configuration</h3>
+<p>Create the hostname file:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/hostname</span><br></pre></td></tr></table></figure>
+<p>Config your hosts:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/hosts</span><br></pre></td></tr></table></figure>
+<p>Add the following contents to the end of this file:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">127.0.0.1	localhost</span><br><span class="line">::1		localhost</span><br><span class="line">127.0.1.1	myhostname.localdomain	myhostname</span><br></pre></td></tr></table></figure>
+<h3 id="Set-root-password">Set root password</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">passwd</span><br></pre></td></tr></table></figure>
+<h3 id="Install-Intel-ucode-if-you-have-a-Intel-CPU">Install Intel-ucode (if you have a Intel CPU)</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S intel-ucode</span><br></pre></td></tr></table></figure>
+<h3 id="Install-BootLoader">Install BootLoader</h3>
+<p>Caution! This blog is only for EFI/GPT boot mode! If you are in BIOS/MBR mode, please see <code>Reference 2</code> at the end.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S os-prober ntfs-3g</span><br><span class="line">pacman -S grub efibootmgr</span><br><span class="line">grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=grub</span><br><span class="line">grub-mkconfig -o /boot/grub/grub.cfg</span><br></pre></td></tr></table></figure>
+<p>If there is multi systems on your device, it is recommended to check whether each system’s entry is well generated.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /boot/grub/grub.cfg</span><br></pre></td></tr></table></figure>
+<p>Check if it is all right.</p>
+<h3 id="Reboot-and-enjoy-archlinux">Reboot and enjoy archlinux</h3>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">exit</span></span><br><span class="line">umount /mnt/boot</span><br><span class="line">umount /mnt</span><br><span class="line">reboot</span><br></pre></td></tr></table></figure>
+<p>Pull out your U-disk. Login as root, enter your password.</p>
+<p>If you can see the command line, congratulations, you have installed Archlinux successfully! OHHHHHHH!</p>
+<p>There is still many things to do after that, I will put some guide for them on my next blog.</p>
+<h2 id="References">References</h2>
+<ol>
+<li>
+<p><a href="https://wiki.archlinux.org/index.php/Installation_guide" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Installation_guide</a></p>
+</li>
+<li>
+<p><a href="https://www.viseator.com/2017/05/17/arch_install/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/17/arch_install/</a></p>
+</li>
+</ol>
+]]></content>
+      <categories>
+        <category>系统</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
       </tags>
   </entry>
   <entry>
@@ -964,95 +1315,8 @@ md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
         <category>系统</category>
       </categories>
       <tags>
-        <tag>KDE</tag>
         <tag>Linux</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>文件上传操作整理</title>
-    <url>/2020/07/20/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%93%8D%E4%BD%9C%E6%95%B4%E7%90%86/</url>
-    <content><![CDATA[<p>获取Webshell的常见操作，整理一下。</p>
-<a id="more"></a>
-<h2 id="上传及绕过">上传及绕过</h2>
-<h3 id="常见上传点">常见上传点</h3>
-<ul>
-<li>上传头像</li>
-<li>上传相册</li>
-<li>上传附件</li>
-<li>添加文章图片</li>
-<li>前台留言资料上传</li>
-<li>编辑器文件上传</li>
-</ul>
-<h3 id="后缀绕过">后缀绕过</h3>
-<ul>
-<li>PHP:php2、php3、php5、phtml、pht(是否解析需要根据配置文件中设置类型来决定)</li>
-<li>ASP：asa、cer、cdx</li>
-<li>ASPX：ascx、ashx、asac</li>
-<li>JSP：jsp、jspx、jspf</li>
-</ul>
-<h3 id="绕过类型">绕过类型</h3>
-<ul>
-<li>Content-Type绕过</li>
-<li>前端绕过</li>
-<li>文件解析规则绕过</li>
-<li>Windows环境特性绕过</li>
-<li>文件名大小写绕过</li>
-<li>双写绕过</li>
-<li>点空格绕过</li>
-<li>文件头绕过</li>
-<li>条件竞争绕过</li>
-</ul>
-<h2 id="漏洞在系统中的差异">漏洞在系统中的差异</h2>
-<h3 id="IIS-5-x-6-0-解析漏洞">IIS 5.x/6.0 解析漏洞</h3>
-<p>1、当创建.asp的文件目录的时候，在此目录下的任意文件，服务器都解析为asp文件。例如：<br>
-漏洞目录利用形式：<a href="http://www.xxx.com/xx.asp/xx.jpg%E3%80%82" target="_blank" rel="noopener">www.xxx.com/xx.asp/xx.jpg。</a><br>
-xx.jpg的内容可以为一段合法的asp脚本文件。<br>
-2、服务器默认不解析”;“以后的内容，导致xx.asp;.jpg被解析成xx.asp<br>
-漏洞文件利用形式：<a href="http://www.xxx.com/xx.asp;.jpg" target="_blank" rel="noopener">www.xxx.com/xx.asp;.jpg</a><br>
-xx.jpg的内容可以为一段合法的asp脚本文件。</p>
-<h3 id="Nginx-解析漏洞">Nginx 解析漏洞</h3>
-<p>在低版本Nginx中存在一个由PHP-CGI导致的文件解析漏洞。在PHP的配置文件中有一个关键的选项cgi.fix_pathinfo在本机中位于php.ini配置文件中，默认是开启的，当URL中有不存在的文件时，PHP就会默认向前解析。</p>
-<p>普遍的做法是在Nginx配置文件中通过正则匹配设置SCRIPT_FILENAME。访问<code>http://www.xx.com/phpinfo.jpg/1.php</code> 这个URL时，$fastcgi_script_name会被设置为“phpinfo.jpg/1.php”，然后构造成SCRIPT_FILENAME传递给PHP-CGI，但是PHP为什么会接受这样的参数，并将phpinfo.jpg作为PHP文件解析呢？这就要说到fix_pathinfo这个选项了。如果开启了这个选项，那么就会触发在PHP中的如下逻辑：PHP会认为SCRIPT_FILENAME是phpinfo.jpg，而1.php是PATH_INFO，所以就会将phpinfo.jpg作为PHP文件来解析了。</p>
-<p>在默认Fast-CGI开启状况下上传名字为xx.jpg,内容为:<br>
-<code>&lt;?PHP fputs(fopen('shell.php','w'),'&lt;?php eval($_POST[cmd])?&gt;');?&gt;</code></p>
-<p>然后访问xx.jpg/.php,在这个目录下就会生成一句话木马shell.php。</p>
-<h3 id="Apache-解析漏洞">Apache 解析漏洞</h3>
-<p>Apache 在1.x和2.x版本中存在解析漏洞，例如如下地址格式：</p>
-<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">www<span class="selector-class">.xxxx</span>.com/apache<span class="selector-class">.php</span><span class="selector-class">.bbb</span>.aaa</span><br></pre></td></tr></table></figure>
-<p>Apache从右至左开始判断后缀，若aaa非可识别后缀，再判断bbb，直到找到可识别后缀为止，然后将该可识别后缀进解析，因此如上地址解析为访问apache.php文件。</p>
-<p>另外对于Apache解析漏洞的正确说法应该是，使用module模式与php结合的所有版本apache存在未知扩展名解析漏洞，使用fastcgi模式与php结合的所有版本apache不存在此漏洞。而是否解析的后缀名在文件mime.types（互联网媒体类型（Internet media type，也称为MIME类型（<em>MIME type</em>）或内容类型（<em>content type</em>））中查找是否出现。</p>
-<h2 id="测试方法">测试方法</h2>
-<h3 id="前端验证">前端验证</h3>
-<p>只在前端利用JS来做效验，采用禁用JS上传、抓包上传都可以绕过此处限制。</p>
-<h3 id="htaccess规则文件绕过">.htaccess规则文件绕过</h3>
-<p>在一些启用了.htaccess文件的网站上就可以使用此文件类型来绕过限制较全面的黑名单过滤。</p>
-<p>先上传一个.htaccess文件，内容为：<code>AddType application/x-httpd-php .aaa</code>。然后再上传文件后缀为.aaa的文件，让其解析为php类型文件。上传成功后即可访问并getshell。</p>
-<h3 id="文件名后缀大小写混合绕过">文件名后缀大小写混合绕过</h3>
-<p>在对后缀的判断中，如果只是对字符串进行单独的比较来判断是不是限制文件，可以采用后缀名大小写绕过形式。如<code>a.PHp</code>。</p>
-<h3 id="Windows文件流特性绕过">Windows文件流特性绕过</h3>
-<p>流文件，即NTFS交换数据流（alternate data  streams，简称ADS），是NTFS磁盘格式的一个特性，在NTFS文件系统下，每个文件都可以存在多个数据流，就是说除了主文件流之外还可以有许多非主文件流寄宿在主文件流中，它使用资源派生来维持与文件相关的信息。创建一个数据交换流文件的方法很简单，命令为“宿主文件:准备与宿主文件关联的数据流文件”。</p>
-<p>上传文件：<code>xxx.php::$data</code>。访问时可以直接访问xxx.php文件。</p>
-<h3 id="00截断绕过">%00截断绕过</h3>
-<p>以上问题被绕过的根本原因是采用了一些有缺陷的黑名单限制，一般采用白名单的限制会减少相当多的绕过问题产生，但是并不意味着一定安全，在某些没有处理严格的程序上，仍然可以采用截断绕过的形式。</p>
-<p>例如：</p>
-<figure class="highlight php"><table><tr><td class="code"><pre><span class="line">$is_upload = <span class="keyword">false</span>;</span><br><span class="line">$msg = <span class="keyword">null</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>($_POST[<span class="string">'submit'</span>]))&#123;</span><br><span class="line">    $ext_arr = <span class="keyword">array</span>(<span class="string">'jpg'</span>,<span class="string">'png'</span>,<span class="string">'gif'</span>);</span><br><span class="line">    $file_ext = substr($_FILES[<span class="string">'upload_file'</span>][<span class="string">'name'</span>],strrpos($_FILES[<span class="string">'upload_file'</span>][<span class="string">'name'</span>],<span class="string">"."</span>)+<span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span>(in_array($file_ext,$ext_arr))&#123;</span><br><span class="line">        $temp_file = $_FILES[<span class="string">'upload_file'</span>][<span class="string">'tmp_name'</span>];</span><br><span class="line">        $img_path = $_POST[<span class="string">'save_path'</span>].<span class="string">"/"</span>.rand(<span class="number">10</span>, <span class="number">99</span>).date(<span class="string">"YmdHis"</span>).<span class="string">"."</span>.$file_ext;</span><br><span class="line">        <span class="keyword">if</span>(move_uploaded_file($temp_file,$img_path))&#123;</span><br><span class="line">            $is_upload = <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            $msg = <span class="string">"上传失败"</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        $msg = <span class="string">"只允许上传.jpg|.png|.gif类型文件！"</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>可以看出代码采用的白名单校验，只允许上传图片格式，理论上这个上传是不好绕过的。但是后面采用保存文件的时候，是路径拼接的形式，而路径又是从前端获取，所以我们可以采用在路径上截断。如下上传，显示文件路径中有个空格，这并不是真正意义上的空格，而是%00截断后显示成的空格。</p>
-<p><img src="https://misakikata.github.io/2019/05/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E/1559095054720.png" alt="1559095054720"></p>
-<h3 id="文件头检测绕过">文件头检测绕过</h3>
-<p>JPG：文件头前十个字节为<code>FF D8 FF E0 00 10 4A 46 49 46</code>，FF D8代表SOI标记，意思是图像文件开始值。<code>4A 46 49 46</code>代表字符串JFIF标记。</p>
-<p>PNG：开头4字节为右栏中<code>‰PNG</code>字样，PNG的8字节文件署名域用来识别该文件是不是PNG文件。也就是<code>89 50 4E 47 0D 0A 1A 0A</code>。</p>
-<p>GIF：GIF89a</p>
-<h2 id="利用工具实现FUZZ">利用工具实现FUZZ</h2>
-<p>很多网站对上传进行拦截的时候采取的是黑名单校验，当我们看到黑名单的时候就可以考虑采取修改后缀、截断等方式尝试绕过。</p>
-<p>采用工具 <a href="https://github.com/c0ny1/upload-fuzz-dic-builder" target="_blank" rel="noopener">https://github.com/c0ny1/upload-fuzz-dic-builder</a> 来生成fuzz的字典。执行命令:</p>
-<figure class="highlight css"><table><tr><td class="code"><pre><span class="line"><span class="selector-tag">python</span> <span class="selector-tag">upload-fuzz-dic-builder</span><span class="selector-class">.py</span> <span class="selector-tag">-n</span> <span class="selector-tag">test</span> <span class="selector-tag">-a</span> <span class="selector-tag">jpg</span> <span class="selector-tag">-l</span> <span class="selector-tag">php</span> <span class="selector-tag">-m</span> <span class="selector-tag">apache</span> <span class="selector-tag">--os</span> <span class="selector-tag">win</span> <span class="selector-tag">-o</span> <span class="selector-tag">upload_file</span><span class="selector-class">.txt</span></span><br></pre></td></tr></table></figure>
-<p>把生成的字典导入burp中，同时取消payload-encoding的选中状态。执行后可以看到有些php文件上传成功。然后访问其中上传成功的文件，查看是否执行。</p>
-]]></content>
-      <categories>
-        <category>网络安全</category>
-      </categories>
-      <tags>
-        <tag>CTF</tag>
+        <tag>KDE</tag>
       </tags>
   </entry>
   <entry>
@@ -1936,269 +2200,6 @@ xx.jpg的内容可以为一段合法的asp脚本文件。</p>
       <tags>
         <tag>PHP</tag>
         <tag>Web</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Re:1 Config Archlinux From Scratch</title>
-    <url>/2020/10/17/Re-1-Config-Archlinux-From-Scratch/</url>
-    <content><![CDATA[<p>上一篇文章介绍了Archlinux的安装流程。但是，现在连个图形界面也没有，一堆效率导向的包都没有装上，这还玩个🔨啊。这篇来看看如何把Arch配置成用起来超爽的工具。因为到这里还没有装好中文输入法，所以和上一篇一样是英文的。英语水平不高，有错误的话，万分抱歉。<s>下次重装系统自己能看懂就行</s></p>
-<a id="more"></a>
-<h2 id="Create-a-new-user">Create a new user</h2>
-<p>It is unsafe to use root for daily use. It is better to create a ordinary user.</p>
-<p>Let’s create a new user named muted.</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">useradd -m -G wheel muted</span><br></pre></td></tr></table></figure>
-<p><code>-m</code> stands for creating a new folder whose name is the same as your new user. You can use <code>~</code> to access it easily. <code>-G wheel</code> stands for adding the new user “muted” to a group named “wheel”.</p>
-<p>Set a password for this user:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">passwd muted</span><br></pre></td></tr></table></figure>
-<h2 id="Config-sudo">Config sudo</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ln -s /usr/bin/vim /usr/bin/vi</span><br><span class="line">visudo</span><br></pre></td></tr></table></figure>
-<p>Uncomment <code># %wheel ALL=(ALL)ALL</code>, then reboot. This time your new user is able to use <code>sudo</code> command.</p>
-<h2 id="Graphical-interface-installation">Graphical interface installation</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dhcpcd  <span class="comment"># Connet to the Internet</span></span><br><span class="line">sudo pacman -S xf86-video-intel  <span class="comment"># If your GPU is from Intel</span></span><br></pre></td></tr></table></figure>
-<p>See also: <a href="https://wiki.archlinux.org/index.php/Xorg#Driver_installation" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Xorg#Driver_installation</a></p>
-<p>Now install Xorg and some necessary packages:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S xorg xorg-server plasma dolphin kate kdialog konsole fsearch dragon ffmpegthumbs kde-meta-kdeadmin kde-meta-kdeutils kde-meta-kdegraphics sddm sddm-kcm</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> sddm</span><br></pre></td></tr></table></figure>
-<h2 id="Config-your-Internet">Config your Internet</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo systemctl <span class="built_in">disable</span> netctl</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> NetworkManager  <span class="comment"># Draw attention on UPPER and lower case</span></span><br><span class="line">sudo pacman -S network-manager-applet</span><br></pre></td></tr></table></figure>
-<h2 id="Use-pacman-mirror">Use pacman mirror</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/pacman.d/mirrorlist</span><br></pre></td></tr></table></figure>
-<p>Copy the mirrors you wants to use and paste them to the beginning of this file. One of the commonly used mirrors is <code>https://mirrors.tuna.tsinghua.edu.cn</code>.</p>
-<p>I chose <code>https://linux.xidian.edu.cn/mirrors/archlinux/$repo/os/$arch</code> (Only available under the campus network environment).</p>
-<h2 id="Use-archlinuxcn-repository">Use archlinuxcn repository</h2>
-<p>At the end of file add:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[archlinuxcn]</span><br><span class="line">Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/<span class="variable">$arch</span></span><br></pre></td></tr></table></figure>
-<p>If you are a ‘Xidianer’ too, you can also:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Server = https://linux.xidian.edu.cn/mirrors/archlinuxcn/<span class="variable">$arch</span></span><br></pre></td></tr></table></figure>
-<p>Then:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -Syy</span><br><span class="line">sudo pacman -Syu</span><br><span class="line">sudo pacman -S archlinuxcn-keyring</span><br></pre></td></tr></table></figure>
-<h2 id="Use-AUR-repository-with-yay">Use AUR repository with yay</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S yay</span><br><span class="line">yay -Syu --devel --combinedupgrade --save</span><br></pre></td></tr></table></figure>
-<p>Then change current <code>aururl</code> to <code>https://aur.tuna.tsinghua.edu.cn</code>.</p>
-<h2 id="Use-fish-shell-as-your-default-shell">Use fish shell as  your default shell</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fish</span><br></pre></td></tr></table></figure>
-<p>Set fish the default shell on Konsole: <code>Konsole -&gt; Settings -&gt; Edit Current Profile</code>, choose /bin/fish as default command, Then restart Konsole.</p>
-<p>Use fish as default user shell:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo chsh -s /usr/bin/fish root</span><br><span class="line">sudo chsh -s /usr/bin/fish [username]</span><br></pre></td></tr></table></figure>
-<p>Set greeting words:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">set</span> fish_greeting <span class="string">'Your Greeting Words'</span></span><br></pre></td></tr></table></figure>
-<p>Config fish shell:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fish_config</span><br></pre></td></tr></table></figure>
-<p>I recommend to set some abbreviations, for example:</p>
-<p><code>pc</code> is short for <code>proxychains</code></p>
-<p><code>pmc</code> is short for <code>sudo vim /etc/pacman.d/mirrorlist</code></p>
-<p><code>pmi</code> is short for <code>sudo pacman -S</code></p>
-<p><code>pms</code> is short for <code>sudo pacman -Ss</code></p>
-<p><code>pmu</code> is short for <code>sudo pacman -Syyu</code></p>
-<h2 id="Change-hosts-Github">Change hosts (Github)</h2>
-<p>Seems not very useful for me but… just record it here in case that some day I need it.</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S dnsutils</span><br></pre></td></tr></table></figure>
-<p>Use <code>dig</code> or <code>nslookup</code> command to build a hosts file yourself.</p>
-<h2 id="Bypass-GFW">Bypass GFW</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S v2ray qv2ray proxychains-ng</span><br></pre></td></tr></table></figure>
-<p>More? …sorry but I won’t tell you more🤪</p>
-<p><strong>Caution! : Set your system time correctly first, or you can never success.</strong></p>
-<p>If you want some rules, look at here: <a href="https://github.com/Loyalsoldier/v2ray-rules-dat" target="_blank" rel="noopener">https://github.com/Loyalsoldier/v2ray-rules-dat</a>, just put geosite and geoip into <code>/usr/share/v2ray/</code>. Easy!</p>
-<h2 id="Fonts-config">Fonts config</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-sarasa-gothic nerd-fonts-jetbrains-mono wqy-microhei wqy-zenhei</span><br></pre></td></tr></table></figure>
-<p>Download the config file at <a href="https://bitbucket.org/szclsya/dotfiles/src/master/fontconfig/fonts.conf" target="_blank" rel="noopener">https://bitbucket.org/szclsya/dotfiles/src/master/fontconfig/fonts.conf</a>, put it into <code>~/.config/fontconfig/fonts.conf</code>, log out and log in, then it works.</p>
-<h2 id="Install-Google-chrome">Install Google-chrome</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S google-chrome</span><br></pre></td></tr></table></figure>
-<p>Caution: the bin file named <code>google-chrome-stable</code>, so if you want to start it use command line, use:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">google-chrome-stable</span><br></pre></td></tr></table></figure>
-<h2 id="Chinese-input">Chinese input</h2>
-<p>I chose Rime(fcitx5) as my Chinese input scheme instead of sogou pinyin because the latter has some strange conflict with Jetbrains IDEs. <s>🔪🔪🔪Fuck Sogou</s></p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fcitx5-im fcitx5-configtool</span><br><span class="line">sudo pacman -S fcitx5-chinese-addons fcitx5-gtk fcitx5-qt fcitx5-pinyin-zhwiki kcm-fcitx5</span><br><span class="line">sudo pacman -S fcitx5-rime</span><br></pre></td></tr></table></figure>
-<p><code>fcitx-configtool -&gt; add rime</code></p>
-<p>Now let’s config it:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim ~/.xprofile</span><br></pre></td></tr></table></figure>
-<p>Then add:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">export</span> GTK_IM_MODULE=fcitx</span><br><span class="line"><span class="built_in">export</span> QT_IM_MODULE-fcitx</span><br><span class="line"><span class="built_in">export</span> XMODIFIERS=<span class="string">"@im=fcitx"</span></span><br><span class="line">fcitx5 &amp;</span><br></pre></td></tr></table></figure>
-<p>Log out then Log in. It works. But… It’s not BEEEAAAUTIFUL enough!</p>
-<p><strong>RXnb! Let’s use RX’s skin for fcitx5 input method!</strong><br>
-<a href="https://github.com/Reverier-Xu/RxWe10-Fcitx5" target="_blank" rel="noopener">https://github.com/Reverier-Xu/RxWe10-Fcitx5</a><br>
-Put those theme file to <code>/usr/share/fcitx5/themes/</code>, and set <code>~/.config/fcitx5/conf/classicui.conf</code>:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># 垂直候选列表</span></span><br><span class="line">Vertical Candidate List=False</span><br><span class="line"></span><br><span class="line"><span class="comment"># 按屏幕 DPI 使用</span></span><br><span class="line">PerScreenDPI=True</span><br><span class="line"></span><br><span class="line"><span class="comment"># Font (设置成你喜欢的字体)</span></span><br><span class="line">Font=<span class="string">"字体字体字体字体写在这里"</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 主题</span></span><br><span class="line">Theme=RxWe10-light</span><br></pre></td></tr></table></figure>
-<p>Or you can use some famous theme such as:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S fcitx5-material-color</span><br></pre></td></tr></table></figure>
-<p>See Also: <a href="https://github.com/hosxy/Fcitx5-Material-Color" target="_blank" rel="noopener">https://github.com/hosxy/Fcitx5-Material-Color</a></p>
-<h2 id="Install-Jetbrains-IDEs">Install Jetbrains IDEs</h2>
-<p>Developers necessity. Use <code>pacman</code> or <code>yay</code> .</p>
-<h2 id="Install-Tencent-shits">Install Tencent shits</h2>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/pacman.conf</span><br></pre></td></tr></table></figure>
-<p>To use deepin-wine I have to enable multilib since my Archlinux is x64 version (?)</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -Sy deepin.com.qq.office</span><br></pre></td></tr></table></figure>
-<p>Now TIM is installed. But we cannot run it now since it is designed to be compatible with GTK style desktops. So we:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S gnome-settings-daemon</span><br></pre></td></tr></table></figure>
-<p><code>System Settings -&gt; Start up and shut down -&gt; Autostart -&gt; Add Script -&gt; /usr/lib/gsd-xsettings</code></p>
-<p>Now TIM is available. Though it is not easy to use as it is on Windows, we barely HAVE a TIM on Arch at least.</p>
-<h2 id="References">References</h2>
-<ol>
-<li><a href="https://www.viseator.com/2017/05/19/arch_setup/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/19/arch_setup/</a></li>
-<li><a href="https://www.wootec.top/2019/11/02/%E5%A6%82%E4%BD%95%E5%9C%A8Linux%E4%B8%8A%E4%BC%98%E9%9B%85%E7%9A%84%E5%A0%95%E8%90%BD/" target="_blank" rel="noopener">https://www.wootec.top/2019/11/02/如何在Linux上优雅的堕落/</a></li>
-<li><a href="https://www.wootec.top/2019/11/15/%E5%A6%82%E4%BD%95%E5%9C%A8Linux%E4%B8%8A%E4%BC%98%E9%9B%85%E7%9A%84%E5%A0%95%E8%90%BD-2/" target="_blank" rel="noopener">https://www.wootec.top/2019/11/15/如何在Linux上优雅的堕落-2/</a></li>
-<li><a href="https://rocka.me/article/arch-linux-kde-plasma-install-and-config" target="_blank" rel="noopener">https://rocka.me/article/arch-linux-kde-plasma-install-and-config</a></li>
-</ol>
-]]></content>
-      <categories>
-        <category>系统</category>
-      </categories>
-      <tags>
-        <tag>Linux</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>Re:0 Install Archlinux From Scratch</title>
-    <url>/2020/10/17/Re-0-Install-Archlinux-From-Scratch/</url>
-    <content><![CDATA[<p>前几天手贱把自己原来的Manjaro系统搞炸了，于是趁这个机会重装了自己一直心心念念的Arch，也算是从零开始的Arch生活了吧。因为这篇博客是在装系统的过程中写的，当时还没有配置中文的输入法，所以用了英文来写。英文水平有限肯定会出一些错误，还请海涵。<s>自己再装的时候能看懂就行</s></p>
-<a id="more"></a>
-<h2 id="Prepare-an-installation-medium">Prepare an installation medium</h2>
-<p>I used rufus on Windows 10 to make my U-disk an installation medium. I chose dd mode of rufus. Make sure there is an empty partition on your disk.</p>
-<p>I will go straight to the next step because this is easy.</p>
-<h2 id="Pre-Installation">Pre-Installation</h2>
-<h3 id="Boot-the-live-environment">Boot the live environment</h3>
-<p>Disable secure boot. Then restart your PC and boot from your USB device. Choose <code>Boot Arch Linux (x86_64)</code> , now you can see Archlinux is ready to load contents. Finally you will logged in on the first virtual console as the root user, and presented with a <code>zsh</code> shell prompt. You can autocomplete your commands using <code>tab</code> , OHHHHHH!</p>
-<h3 id="Verify-the-boot-mode">Verify the boot mode</h3>
-<p>To verify the boot mode, list the efivars directory:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ls /sys/firmware/efi/efivars</span><br></pre></td></tr></table></figure>
-<p>If the command shows the directory without error, then the system is booted in UEFI mode. If the directory does not exist, the system may be booted in BIOS (or CSM) mode. If the system did not boot in the mode you desired, refer to your motherboard’s manual.</p>
-<p>Or, a more secure way is <code>fdisk -l</code> ,if your SSD (or HDD) shows its <code>Disklabel type</code> is <code>gpt</code> and there is a small partition whose type is <code>EFI System</code> , Then your boot mode can be verified to be EFI.</p>
-<h3 id="Connect-to-the-Internet">Connect to the Internet</h3>
-<p>Arch needs network connection to complete its installation.</p>
-<p>Ensure your network interface is listed and enabled:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ip link</span><br></pre></td></tr></table></figure>
-<p>For wired connection:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dhcpcd</span><br></pre></td></tr></table></figure>
-<p>For wireless connection:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">iwctl</span><br><span class="line">device list</span><br><span class="line">station wlan0 scan</span><br><span class="line">station wlan0 get-networks</span><br><span class="line">station wlan0 connect `xxxxx`</span><br></pre></td></tr></table></figure>
-<p>Check if you are connected to the internet:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ping baidu.com</span><br></pre></td></tr></table></figure>
-<p>If everything is OK, quit iwd:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">quit</span><br></pre></td></tr></table></figure>
-<h3 id="Update-the-system-clock">Update the system clock</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">timedatectl <span class="built_in">set</span>-ntp <span class="literal">true</span></span><br></pre></td></tr></table></figure>
-<p>To check the service status, use <code>timedatectl status</code>.</p>
-<h3 id="Partition-the-disks">Partition the disks</h3>
-<table>
-<thead>
-<tr>
-<th>Device Type</th>
-<th>File Name</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SATA/SAS/USB</td>
-<td>/dev/sda,/dev/sdb,……</td>
-</tr>
-<tr>
-<td>IDE</td>
-<td>/dev/hd0,/dev/hd1,……</td>
-</tr>
-<tr>
-<td>VIRTIO-BLOCK</td>
-<td>/dev/vda,/dev/vdb,……</td>
-</tr>
-<tr>
-<td>M2(SSD)</td>
-<td>/dev/nvme0,/dev/nvme1</td>
-</tr>
-<tr>
-<td>SD/MMC/EMMC(Card)</td>
-<td>/dev/mmcblk0,/dev/mmcblk1</td>
-</tr>
-<tr>
-<td>CD drive</td>
-<td>/dev/cdrom,/dev/sr0,/dev/sr1</td>
-</tr>
-</tbody>
-</table>
-<p>When recognized by the live system, disks are assigned to a <a href="https://wiki.archlinux.org/index.php/Block_device" target="_blank" rel="noopener">block device</a> such as <code>/dev/sda</code>, <code>/dev/nvme0n1</code> or <code>/dev/mmcblk0</code>. To identify these devices, use <code>lsblk</code> or <code>fdisk</code>.</p>
-<p>I boot my Arch in UEFI mode, so first I must create a boot partition (EFI system partition).</p>
-<h4 id="Create-a-boot-partition">Create a boot partition</h4>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fdisk /dev/&#123;YOUR DISK&#125;  <span class="comment"># Example: fdisk /dev/sdx  or  fdisk /dev/nvmex</span></span><br></pre></td></tr></table></figure>
-<p>See usages of commands by typing <code>m</code> and enter.</p>
-<p>Enter <code>n</code> to create a new partition. You are asked to select the starting sector, generally we type enter (select by default). Then enter end sector or partition size. I used <code>+512M</code> .</p>
-<p>Enter <code>p</code> to check if it works. Enter <code>t</code> to change the type of your new partition. Enter <code>l</code> to see all types supported. Change it to EFI.</p>
-<p>Enter <code>w</code> to save. You can check whether there is something wrong before that by <code>p</code>.</p>
-<p>Format it:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkfs.fat -F32 /dev/&#123;YOUR BOOT PARTITION&#125;</span><br></pre></td></tr></table></figure>
-<h4 id="Root-partition">Root partition</h4>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fdisk /dev/&#123;YOUR DISK&#125;</span><br></pre></td></tr></table></figure>
-<p>Create a new partition table if there is not one exist. I already have one on my disk so I go on directly.</p>
-<p>Enter <code>n</code> to create a new partition. I want my new partition fill up the free space completely, so I use enter to choose the default.</p>
-<p>Enter <code>p</code> then <code>w</code> just like creating your boot partition.</p>
-<p>Format it:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mkfs.ext4 /dev/P&#123;YOUR ROOT PARTITION&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="Mount-the-file-systems">Mount the file systems</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">mount /dev/&#123;YOUR ROOT PARTITION&#125; /mnt</span><br><span class="line">mkdir /mnt/boot</span><br><span class="line">mount /dev/&#123;YOUR BOOT PARTITION&#125; /mnt/boot</span><br></pre></td></tr></table></figure>
-<h2 id="Installation">Installation</h2>
-<h3 id="Use-Pacman-Mirror">Use Pacman Mirror</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/pacman.d/mirrorlist</span><br></pre></td></tr></table></figure>
-<p>Copy the mirrors you wants to use and paste them to the beginning of this file. One of the commonly used mirrors is <code>https://mirrors.tuna.tsinghua.edu.cn</code>.</p>
-<p>I chose <code>https://linux.xidian.edu.cn/mirrors/archlinux/$repo/os/$arch</code> (Only available under the campus network environment).</p>
-<h3 id="Install-essential-packages">Install essential packages</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacstrap /mnt base base-devel linux linux-firmware dhcpcd</span><br></pre></td></tr></table></figure>
-<h2 id="Configure-the-system">Configure the system</h2>
-<h3 id="Fstab">Fstab</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">genfstab -L /mnt &gt;&gt; /mnt/etc/fstab</span><br></pre></td></tr></table></figure>
-<p>We need a check to make sure it is right since it is an important step. Check the resulting <code>/mnt/etc/fstab</code> file, and edit it in case of errors:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">cat /mnt/etc/fstab</span><br></pre></td></tr></table></figure>
-<h3 id="Chroot">Chroot</h3>
-<p><code>chroot</code> means ‘change root’. Change root into the new system:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">arch-chroot /mnt</span><br></pre></td></tr></table></figure>
-<p>We can also use this command to fix our system if there is some problem with it.</p>
-<h3 id="Time-zone">Time zone</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime</span><br><span class="line">hwclock --systohc</span><br></pre></td></tr></table></figure>
-<h3 id="Install-necessary-packages">Install necessary packages</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S vim dialog wpa_supplicant ntfs-3g networkmanager netctl</span><br></pre></td></tr></table></figure>
-<h3 id="Localization">Localization</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/locale.gen</span><br></pre></td></tr></table></figure>
-<p>Uncomment <code>zh_CN.UTF-8 UTF-8</code> <code>zh_HK.UTF-8 UTF-8</code> <code>zh_TW.UTF-8 UTF-8</code> <code>en_US.UTF-8 UTF-8</code> .</p>
-<p>Then <code>:wq</code> save and quit.</p>
-<p>Generate the locales by running:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">locale-gen</span><br></pre></td></tr></table></figure>
-<p>Config locale file:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/locale.conf</span><br></pre></td></tr></table></figure>
-<p>Add the following line to the first line of this file:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">LANG=en_US.UTF-8</span><br></pre></td></tr></table></figure>
-<p><code>:wq</code> . Fine.</p>
-<h3 id="Network-configuration">Network configuration</h3>
-<p>Create the hostname file:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/hostname</span><br></pre></td></tr></table></figure>
-<p>Config your hosts:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /etc/hosts</span><br></pre></td></tr></table></figure>
-<p>Add the following contents to the end of this file:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">127.0.0.1	localhost</span><br><span class="line">::1		localhost</span><br><span class="line">127.0.1.1	myhostname.localdomain	myhostname</span><br></pre></td></tr></table></figure>
-<h3 id="Set-root-password">Set root password</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">passwd</span><br></pre></td></tr></table></figure>
-<h3 id="Install-Intel-ucode-if-you-have-a-Intel-CPU">Install Intel-ucode (if you have a Intel CPU)</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S intel-ucode</span><br></pre></td></tr></table></figure>
-<h3 id="Install-BootLoader">Install BootLoader</h3>
-<p>Caution! This blog is only for EFI/GPT boot mode! If you are in BIOS/MBR mode, please see <code>Reference 2</code> at the end.</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S os-prober ntfs-3g</span><br><span class="line">pacman -S grub efibootmgr</span><br><span class="line">grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=grub</span><br><span class="line">grub-mkconfig -o /boot/grub/grub.cfg</span><br></pre></td></tr></table></figure>
-<p>If there is multi systems on your device, it is recommended to check whether each system’s entry is well generated.</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /boot/grub/grub.cfg</span><br></pre></td></tr></table></figure>
-<p>Check if it is all right.</p>
-<h3 id="Reboot-and-enjoy-archlinux">Reboot and enjoy archlinux</h3>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">exit</span></span><br><span class="line">umount /mnt/boot</span><br><span class="line">umount /mnt</span><br><span class="line">reboot</span><br></pre></td></tr></table></figure>
-<p>Pull out your U-disk. Login as root, enter your password.</p>
-<p>If you can see the command line, congratulations, you have installed Archlinux successfully! OHHHHHHH!</p>
-<p>There is still many things to do after that, I will put some guide for them on my next blog.</p>
-<h2 id="References">References</h2>
-<ol>
-<li>
-<p><a href="https://wiki.archlinux.org/index.php/Installation_guide" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Installation_guide</a></p>
-</li>
-<li>
-<p><a href="https://www.viseator.com/2017/05/17/arch_install/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/17/arch_install/</a></p>
-</li>
-</ol>
-]]></content>
-      <categories>
-        <category>系统</category>
-      </categories>
-      <tags>
-        <tag>Linux</tag>
       </tags>
   </entry>
 </search>

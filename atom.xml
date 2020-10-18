@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://blog.muted.top/"/>
-  <updated>2020-10-17T14:22:27.711Z</updated>
+  <updated>2020-10-18T04:09:58.595Z</updated>
   <id>http://blog.muted.top/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="http://blog.muted.top/2020/10/17/Re-1-Config-Archlinux-From-Scratch/"/>
     <id>http://blog.muted.top/2020/10/17/Re-1-Config-Archlinux-From-Scratch/</id>
     <published>2020-10-17T10:16:32.000Z</published>
-    <updated>2020-10-17T14:22:27.711Z</updated>
+    <updated>2020-10-18T04:09:58.595Z</updated>
     
     <summary type="html">
     
@@ -98,9 +98,9 @@
       <category term="系统" scheme="http://blog.muted.top/categories/%E7%B3%BB%E7%BB%9F/"/>
     
     
-      <category term="KDE" scheme="http://blog.muted.top/tags/KDE/"/>
-    
       <category term="Linux" scheme="http://blog.muted.top/tags/Linux/"/>
+    
+      <category term="KDE" scheme="http://blog.muted.top/tags/KDE/"/>
     
   </entry>
   
