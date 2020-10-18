@@ -2211,8 +2211,8 @@ xx.jpg的内容可以为一段合法的asp脚本文件。</p>
 <h3 id="问题描述">问题描述</h3>
 <p>装了个比较纯净的Arch系统，没有安装kde-applications包组，发现plasma-discover无法联网，显示<code>Unable to load applications. Please verify Internet connectivity</code>。</p>
 <h3 id="解决方案">解决方案</h3>
-<p>问题的产生是由于缺少kde-application包组里的一些包。不过这个包组实在臃肿，我不愿意装它。所以去定位造成问题的包了。最后发现造成问题的包是 <code>packagekit-qt5</code>、<code>flatpack</code> 和 <code>appstream</code> 这几个。所以：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S packagekit-qt5 flatpack appstream</span><br></pre></td></tr></table></figure>
+<p>问题的产生是由于缺少kde-application包组里的一些包。不过这个包组实在臃肿，我不愿意装它。所以去定位造成问题的包了。最后发现造成问题的包是 <code>packagekit-qt5</code> 和 <code>appstream</code> 这两个。所以：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S packagekit-qt5 appstream</span><br></pre></td></tr></table></figure>
 <p>问题解决。</p>
 <h2 id="双系统情况下Windows磁盘无法自动挂载">双系统情况下Windows磁盘无法自动挂载</h2>
 <h3 id="问题描述-2">问题描述</h3>
