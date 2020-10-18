@@ -154,7 +154,7 @@ Put those theme file to <code>/usr/share/fcitx5/themes/</code>, and set <code>~/
 <p>Now TIM is installed. But we cannot run it now since it is designed to be compatible with GTK style desktops. So we:</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S gnome-settings-daemon</span><br></pre></td></tr></table></figure>
 <p><code>System Settings -&gt; Start up and shut down -&gt; Autostart -&gt; Add Script -&gt; /usr/lib/gsd-xsettings</code></p>
-<p>Now TIM is available. Though it is not easy to use as it is on Windows, we barely HAVE a TIM on Arch at least.</p>
+<p>Now TIM is available. Though it is not easy to use as it is on Windows, we HAVE a TIM on Arch at least.</p>
 <h2 id="References">References</h2>
 <ol>
 <li><a href="https://www.viseator.com/2017/05/19/arch_setup/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/19/arch_setup/</a></li>
