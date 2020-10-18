@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://blog.muted.top/"/>
-  <updated>2020-10-18T05:35:26.934Z</updated>
+  <updated>2020-10-18T15:30:28.756Z</updated>
   <id>http://blog.muted.top/</id>
   
   <author>
@@ -21,11 +21,11 @@
     <link href="http://blog.muted.top/2020/10/18/ArchLinux%E4%B8%8B%E5%A5%87%E6%80%AA%E5%B0%8F%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3/"/>
     <id>http://blog.muted.top/2020/10/18/ArchLinux%E4%B8%8B%E5%A5%87%E6%80%AA%E5%B0%8F%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3/</id>
     <published>2020-10-18T05:08:43.000Z</published>
-    <updated>2020-10-18T05:35:26.934Z</updated>
+    <updated>2020-10-18T15:30:28.756Z</updated>
     
     <summary type="html">
     
-      &lt;p&gt;ArchLinux 配合KDE Plasma作为一个桌面系统来使用，相当好用。不过也有一些痛点和痒点需要自己踩坑。把踩坑过程放在这里整理一下。持续更新~~（大概）~~&lt;/p&gt;
+      &lt;p&gt;ArchLinux 配合KDE Plasma作为一个桌面系统来使用，相当好用。不过也有一些痛点和痒点需要自己踩坑。把踩坑过程放在这里整理一下。持续更新(&lt;s&gt;大概&lt;/s&gt;)&lt;/p&gt;
     
     </summary>
     

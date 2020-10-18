@@ -2205,7 +2205,7 @@ xx.jpg的内容可以为一段合法的asp脚本文件。</p>
   <entry>
     <title>ArchLinux下奇怪小问题的解决</title>
     <url>/2020/10/18/ArchLinux%E4%B8%8B%E5%A5%87%E6%80%AA%E5%B0%8F%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3/</url>
-    <content><![CDATA[<p>ArchLinux 配合KDE Plasma作为一个桌面系统来使用，相当好用。不过也有一些痛点和痒点需要自己踩坑。把踩坑过程放在这里整理一下。持续更新~~（大概）~~</p>
+    <content><![CDATA[<p>ArchLinux 配合KDE Plasma作为一个桌面系统来使用，相当好用。不过也有一些痛点和痒点需要自己踩坑。把踩坑过程放在这里整理一下。持续更新(<s>大概</s>)</p>
 <a id="more"></a>
 <h2 id="Plasma-discover-无法联网">Plasma-discover 无法联网</h2>
 <h3 id="问题描述">问题描述</h3>
