@@ -2202,4 +2202,39 @@ xx.jpg的内容可以为一段合法的asp脚本文件。</p>
         <tag>Web</tag>
       </tags>
   </entry>
+  <entry>
+    <title>ArchLinux下奇怪小问题的解决</title>
+    <url>/2020/10/18/ArchLinux%E4%B8%8B%E5%A5%87%E6%80%AA%E5%B0%8F%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3/</url>
+    <content><![CDATA[<p>ArchLinux 配合KDE Plasma作为一个桌面系统来使用，相当好用。不过也有一些痛点和痒点需要自己踩坑。把踩坑过程放在这里整理一下。持续更新~~（大概）~~</p>
+<a id="more"></a>
+<h2 id="Plasma-discover-无法联网">Plasma-discover 无法联网</h2>
+<h3 id="问题描述">问题描述</h3>
+<p>装了个比较纯净的Arch系统，没有安装kde-applications包组，发现plasma-discover无法联网，显示<code>Unable to load applications. Please verify Internet connectivity</code>。</p>
+<h3 id="解决方案">解决方案</h3>
+<p>问题的产生是由于缺少kde-application包组里的一些包。不过这个包组实在臃肿，我不愿意装它。所以去定位造成问题的包了。最后发现造成问题的包是 <code>packagekit-qt5</code>、<code>flatpack</code> 和 <code>appstream</code> 这几个。所以：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S packagekit-qt5 flatpack appstream</span><br></pre></td></tr></table></figure>
+<p>问题解决。</p>
+<h2 id="双系统情况下Windows磁盘无法自动挂载">双系统情况下Windows磁盘无法自动挂载</h2>
+<h3 id="问题描述-2">问题描述</h3>
+<p>我使用了Arch和Win10的双系统。每次需要访问Win10硬盘分区中的内容都要手动重新挂载而且需要用户密码。懒狗觉得这样不行，必须把这个问题解决了才能叫做懒狗。</p>
+<h3 id="解决方案-2">解决方案</h3>
+<p>首先解决每次都需要手动挂载的问题。我先让它来个自动挂载。先查看一下分区看看自己需要挂载哪些内容：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">fdisk -l</span><br></pre></td></tr></table></figure>
+<p>我需要挂载的是两个分区，一个是 <code>/dev/nvme0n1p3</code> （C盘），一个是 <code>/dev/nvme0n1p5</code> （D盘）。所以编辑一下fstab的内容：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/fstab</span><br></pre></td></tr></table></figure>
+<p>在文件的最后加上这样几句：</p>
+<figure class="highlight dts"><table><tr><td class="code"><pre><span class="line"><span class="meta"># /dev/nvme0n1p3</span></span><br><span class="line"><span class="meta-keyword">/dev/</span>nvme0n1p3          <span class="meta-keyword">/run/</span>media<span class="meta-keyword">/muted/</span>Windows/  ntfs        rw,relatime     <span class="number">0</span> <span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="meta"># /dev/nvme0n1p5</span></span><br><span class="line"><span class="meta-keyword">/dev/</span>nvme0n1p5          <span class="meta-keyword">/run/</span>media<span class="meta-keyword">/muted/</span>DATA/      ntfs        rw,relatime     <span class="number">0</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>当然，具体情况具体分析，<s>意思就是你照抄上面这份估计一般不得行（</s></p>
+<p>接下来解决需要输入密码的问题。STFW之后发现这个密码的配置在 <code>/usr/share/polkit-1/actions/org.freedesktop.UDisks2.policy  </code> 这里。备份一下：</p>
+<figure class="highlight stylus"><table><tr><td class="code"><pre><span class="line">sudo cp /usr/share/polkit-<span class="number">1</span>/actions/org<span class="selector-class">.freedesktop</span><span class="selector-class">.UDisks2</span><span class="selector-class">.policy</span> org<span class="selector-class">.freedesktop</span><span class="selector-class">.UDisks2</span><span class="selector-class">.policy</span>.bak</span><br></pre></td></tr></table></figure>
+<p>改一下文件里 <code>&lt;action id=&quot;org.freedesktop.udisks2.filesystem-mount-system&quot;&gt;</code> 的相关配置，把 <code>&lt;allow_active&gt;</code> 标签里的 <code>auth_admin_keep</code> 改成 <code>yes</code> 。我的是在173行，当然这也需要具体情况具体分析了。</p>
+<p>重启一下，发现这两块分区自动挂载到了/run/media/下面。成了！</p>
+]]></content>
+      <categories>
+        <category>系统</category>
+      </categories>
+      <tags>
+        <tag>Linux</tag>
+      </tags>
+  </entry>
 </search>
