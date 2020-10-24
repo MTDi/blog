@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://blog.muted.top/"/>
-  <updated>2020-10-18T15:30:28.756Z</updated>
+  <updated>2020-10-24T09:30:05.713Z</updated>
   <id>http://blog.muted.top/</id>
   
   <author>
@@ -15,6 +15,48 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>妙语集II</title>
+    <link href="http://blog.muted.top/2020/10/24/%E5%A6%99%E8%AF%AD%E9%9B%86II/"/>
+    <id>http://blog.muted.top/2020/10/24/%E5%A6%99%E8%AF%AD%E9%9B%86II/</id>
+    <published>2020-10-24T09:28:43.000Z</published>
+    <updated>2020-10-24T09:30:05.713Z</updated>
+    
+    <summary type="html">
+    
+      &lt;p&gt;周围人们有趣言论的碎片集合。第二辑。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="悠哉日常" scheme="http://blog.muted.top/categories/%E6%82%A0%E5%93%89%E6%97%A5%E5%B8%B8/"/>
+    
+    
+      <category term="妙语集" scheme="http://blog.muted.top/tags/%E5%A6%99%E8%AF%AD%E9%9B%86/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>妙语集I</title>
+    <link href="http://blog.muted.top/2020/10/24/%E5%A6%99%E8%AF%AD%E9%9B%86I/"/>
+    <id>http://blog.muted.top/2020/10/24/%E5%A6%99%E8%AF%AD%E9%9B%86I/</id>
+    <published>2020-10-24T09:11:26.000Z</published>
+    <updated>2020-10-24T09:28:24.049Z</updated>
+    
+    <summary type="html">
+    
+      &lt;p&gt;周围人们有趣言论的碎片集合。第一辑。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="悠哉日常" scheme="http://blog.muted.top/categories/%E6%82%A0%E5%93%89%E6%97%A5%E5%B8%B8/"/>
+    
+    
+      <category term="妙语集" scheme="http://blog.muted.top/tags/%E5%A6%99%E8%AF%AD%E9%9B%86/"/>
+    
+  </entry>
   
   <entry>
     <title>ArchLinux下奇怪小问题的解决</title>
