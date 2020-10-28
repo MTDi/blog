@@ -80,7 +80,8 @@ md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dhcpcd  <span class="comment"># Connet to the Internet</span></span><br><span class="line">sudo pacman -S xf86-video-intel  <span class="comment"># If your GPU is from Intel</span></span><br></pre></td></tr></table></figure>
 <p>See also: <a href="https://wiki.archlinux.org/index.php/Xorg#Driver_installation" target="_blank" rel="noopener">https://wiki.archlinux.org/index.php/Xorg#Driver_installation</a></p>
 <p>Now install Xorg and some necessary packages:</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S xorg xorg-server plasma dolphin kate kdialog konsole fsearch dragon ffmpegthumbs kde-meta-kdeadmin kde-meta-kdeutils kde-meta-kdegraphics sddm sddm-kcm</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> sddm</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">pacman -S xorg xorg-server plasma dolphin kate kdialog konsole fsearch dragon ffmpegthumbs sddm sddm-kcm</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> sddm</span><br></pre></td></tr></table></figure>
+<p><code>kde-meta-kdeadmin</code> <code>kde-meta-kdeutils</code> <code>kde-meta-kdegraphics</code> have been removed because of obsoleteness.</p>
 <h2 id="Config-your-Internet">Config your Internet</h2>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo systemctl <span class="built_in">disable</span> netctl</span><br><span class="line">sudo systemctl <span class="built_in">enable</span> NetworkManager  <span class="comment"># Draw attention on UPPER and lower case</span></span><br><span class="line">sudo pacman -S network-manager-applet</span><br></pre></td></tr></table></figure>
 <h2 id="Use-pacman-mirror">Use pacman mirror</h2>
@@ -88,6 +89,7 @@ md5 值为 <code>\x06\xdaT0D\x9f\x8fo#\xdf\xc1'or'8</code> 也可行。</p>
 <p>Copy the mirrors you wants to use and paste them to the beginning of this file. One of the commonly used mirrors is <code>https://mirrors.tuna.tsinghua.edu.cn</code>.</p>
 <p>I chose <code>https://linux.xidian.edu.cn/mirrors/archlinux/$repo/os/$arch</code> (Only available under the campus network environment).</p>
 <h2 id="Use-archlinuxcn-repository">Use archlinuxcn repository</h2>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo vim /etc/pacman.conf</span><br></pre></td></tr></table></figure>
 <p>At the end of file add:</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[archlinuxcn]</span><br><span class="line">Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/<span class="variable">$arch</span></span><br></pre></td></tr></table></figure>
 <p>If you are a ‘Xidianer’ too, you can also:</p>
@@ -154,7 +156,7 @@ Put those theme file to <code>/usr/share/fcitx5/themes/</code>, and set <code>~/
 <p>Now TIM is installed. But we cannot run it now since it is designed to be compatible with GTK style desktops. So we:</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo pacman -S gnome-settings-daemon</span><br></pre></td></tr></table></figure>
 <p><code>System Settings -&gt; Start up and shut down -&gt; Autostart -&gt; Add Script -&gt; /usr/lib/gsd-xsettings</code></p>
-<p>Now TIM is available. Though it is not easy to use as it is on Windows, we HAVE a TIM on Arch at least.</p>
+<p>Reboot. Now TIM is available. Though it is not easy to use as it is on Windows, we HAVE a TIM on Arch at least.</p>
 <h2 id="References">References</h2>
 <ol>
 <li><a href="https://www.viseator.com/2017/05/19/arch_setup/" target="_blank" rel="noopener">https://www.viseator.com/2017/05/19/arch_setup/</a></li>
@@ -2350,13 +2352,17 @@ Re: 不，你只会陷入空虚。选择性无视就好了，消遣时间而已�
     <content><![CDATA[<p>周围人们有趣言论的碎片集合。第二辑。</p>
 <a id="more"></a>
 <ul>
-<li>所谓的儿童向的内容是指，大人们将自己觉得非常酷的内容，用容易理解的方式传达给孩子们的创作内容。而所谓的骗小孩子的内容是指，大人们自己都不太喜欢，但是估计孩子们会喜欢，以此标准进行推测而做出来的内容。</li>
-</ul>
-<div style="text-align: right"><i>by kiwaPW@twitter</i></div><hr/>
-<ul>
 <li>你问我我也要百度的啊。</li>
 </ul>
 <div style="text-align: right"><i>by zkonge@QQ</i></div><hr/>
+<ul>
+<li>还是要声明实验班包括西电好不好和你强弱没什么关系。</li>
+</ul>
+<div style="text-align: right"><i>by sad@QQ</i></div><hr/>
+<ul>
+<li>所谓的儿童向的内容是指，大人们将自己觉得非常酷的内容，用容易理解的方式传达给孩子们的创作内容。而所谓的骗小孩子的内容是指，大人们自己都不太喜欢，但是估计孩子们会喜欢，以此标准进行推测而做出来的内容。</li>
+</ul>
+<div style="text-align: right"><i>by kiwaPW@twitter</i></div><hr/>
 <ul>
 <li>你不学咋知道你不会写嘛。</li>
 </ul>
@@ -2407,16 +2413,33 @@ Yes we suck.</li>
 </ul>
 <div style="text-align: right"><i>by 泰迪TED-E@bilibili</i></div><hr/>
 <ul>
-<li>Re: 如何停止做一个废物<br>
-(＾o＾)ﾉ问出来这个问题以后既得不到有用的回答，也没办法下定决心改变，唯一的作用就是在心里告诉自己如果这样做了以后就能摆脱困境吧，还是废物是因为我没有开始行动呢。虽然确实是这个样子不过说到底拥有改变现状的毅力对废物来说也太过于困难了。废物的定义到底是什么呢(ゝ∀･)我其实不李姐，即使多恶劣的人也会有些许的闪光点吧(<em>ﾟ∀ﾟ</em>)当然啦，如果是赌狗，家暴人和酒疯子就是废物吧ﾟ ∀ﾟ)ノ</li>
-</ul>
-<div style="text-align: right"><i>by 43dDLYH@adnmb</i></div><hr/>
-<ul>
 <li>一些灵感虽然记录在了纸上，但也是有保质期的，所以得加紧去完成。发现无论如何也无法完成的，缩减体裁也好，合作也好，只要保留住主题思想，仍然是灵感完美的体现。<br>
 但是一旦看不懂灵感了，无法理解当时为什么这样写了，不明白为什么会记下这么幼稚的东西，甚至有悖于自己现存的价值观了，这样一条灵感便终末了。除了有写在纸上的意义，不再被任何人发现，随时间消亡。<br>
 这样的感觉是很痛苦的，感到的幼稚与回顾过去的作品感到的幼稚截然不同，更多的是一种无力挽回的悲伤。</li>
 </ul>
-<div style="text-align: right"><i>by 荷林@QQ</i></div>
+<div style="text-align: right"><i>by 荷林@QQ</i></div><hr/>
+<ul>
+<li>
+<p>不劝你们看爽文，既然发在匿名版我也不打广告。好好看点严肃东西武装一下自己吧肥哥们，爽文接触多了人会傻掉的，虽然这么说对不起衣食父母，但是写爽文给人看总觉得像在杀猪。我没某些网文作家那么不要脸，不会信誓旦旦地说自己写的东西也算文学。唉总之很矛盾，知道自己写的狗屁不通，让老师知道了会骂死我的，但是挣得确实不少。</p>
+<div style="text-align: right"><i>by DXvbvaM@adnmb</i></div><hr/>
+</li>
+<li>
+<p>更何况创作者啊，你在创作，就已经比百分之九十九的人厉害了，你有自己的世界啊，你这般贬低自己和自己的作品，实际上是一种可恶的傲慢啊。正如殷实的人整天抱怨自己贫穷和不幸，不满足是好事，但不要把已有的说成一文不值。<br>
+不要深陷在追逐痛苦的道路上！<br>
+自勉。</p>
+<div style="text-align: right"><i>by 卤疫十四@QQ</i></div><hr/>
+</li>
+<li>
+<p>请重视算法导论和数据结构这种超级无聊又不直接增加生产力的书、同时更要重视线性代数和概率论这种看起来“与现实脱节”的科目，这些无聊直接决定了你读文章的上限…这是我最近在使用 Jupyter Notebook时体会到的（<br>
+by unknown@zhihu</p>
+<div style="text-align: right"><i>by unknown@zhihu</i></div><hr/>
+</li>
+<li>
+<p>Re: 脚本小子？<br>
+我也是这么想的，但是一想我也是，我就闭嘴了。</p>
+<div style="text-align: right"><i>by luoqian@QQ</i></div>
+</li>
+</ul>
 ]]></content>
       <categories>
         <category>悠哉日常</category>
