@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://blog.muted.top/"/>
-  <updated>2020-10-28T12:21:50.458Z</updated>
+  <updated>2021-04-05T14:49:42.960Z</updated>
   <id>http://blog.muted.top/</id>
   
   <author>
@@ -15,6 +15,50 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>使用Optimus在ArchLinux下配置双显卡双显示器</title>
+    <link href="http://blog.muted.top/2021/04/05/%E4%BD%BF%E7%94%A8Optimus%E5%9C%A8ArchLinux%E4%B8%8B%E9%85%8D%E7%BD%AE%E5%8F%8C%E6%98%BE%E5%8D%A1%E5%8F%8C%E6%98%BE%E7%A4%BA%E5%99%A8/"/>
+    <id>http://blog.muted.top/2021/04/05/%E4%BD%BF%E7%94%A8Optimus%E5%9C%A8ArchLinux%E4%B8%8B%E9%85%8D%E7%BD%AE%E5%8F%8C%E6%98%BE%E5%8D%A1%E5%8F%8C%E6%98%BE%E7%A4%BA%E5%99%A8/</id>
+    <published>2021-04-05T14:05:12.000Z</published>
+    <updated>2021-04-05T14:49:42.960Z</updated>
+    
+    <summary type="html">
+    
+      &lt;p&gt;ArchLinux使用过程中发现笔记本电脑双显卡和双显示器工作不正常，以下是个人的解决方案，参考ArchWiki，仅供参考。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="系统" scheme="http://blog.muted.top/categories/%E7%B3%BB%E7%BB%9F/"/>
+    
+    
+      <category term="Linux" scheme="http://blog.muted.top/tags/Linux/"/>
+    
+      <category term="显卡" scheme="http://blog.muted.top/tags/%E6%98%BE%E5%8D%A1/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>妙语集III</title>
+    <link href="http://blog.muted.top/2020/11/15/%E5%A6%99%E8%AF%AD%E9%9B%86III/"/>
+    <id>http://blog.muted.top/2020/11/15/%E5%A6%99%E8%AF%AD%E9%9B%86III/</id>
+    <published>2020-11-15T09:40:55.000Z</published>
+    <updated>2020-11-15T09:42:05.960Z</updated>
+    
+    <summary type="html">
+    
+      &lt;p&gt;周围人们有趣言论的碎片集合。第三辑。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="悠哉日常" scheme="http://blog.muted.top/categories/%E6%82%A0%E5%93%89%E6%97%A5%E5%B8%B8/"/>
+    
+    
+      <category term="妙语集" scheme="http://blog.muted.top/tags/%E5%A6%99%E8%AF%AD%E9%9B%86/"/>
+    
+  </entry>
   
   <entry>
     <title>妙语集II</title>
